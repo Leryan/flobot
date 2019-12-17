@@ -21,7 +21,7 @@ func NewWerewolf() *werewolf {
 	}
 }
 
-func (w *werewolf) handleCommand(channelid, cmd string, i *instance.Instance, post model.Post) error {
+func (w *werewolf) handleCommand(channelid, cmd string, i instance.Instance, post model.Post) error {
 	if cmd == "start" {
 		_, exists := w.games[channelid]
 		if !exists {
@@ -48,7 +48,7 @@ func (w *werewolf) handleCommand(channelid, cmd string, i *instance.Instance, po
 	return nil
 }
 
-func (w *werewolf) Handle(i *instance.Instance, event *model.WebSocketEvent) error {
+func (w *werewolf) Handle(i instance.Instance, event *model.WebSocketEvent) error {
 	if event.EventType() == "posted" {
 		var post *model.Post
 		if err := json.Unmarshal([]byte(event.Data["post"].(string)), &post); err != nil {

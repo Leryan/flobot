@@ -7,7 +7,7 @@ import (
 	"github.com/mattermost/mattermost-server/model"
 )
 
-func Security(i *instance.Instance, event *model.WebSocketEvent) (bool, error) {
+func Security(i instance.Instance, event *model.WebSocketEvent) (bool, error) {
 	post, err := helpers.DecodePost(event)
 	if err != nil {
 		return false, err

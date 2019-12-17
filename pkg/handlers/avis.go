@@ -9,7 +9,7 @@ import (
 	"github.com/pkg/errors"
 )
 
-func Avis(i *instance.Instance, event *model.WebSocketEvent) error {
+func Avis(i instance.Instance, event *model.WebSocketEvent) error {
 	if event.EventType() != "posted" {
 		return nil
 	}

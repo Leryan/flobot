@@ -11,7 +11,7 @@ import (
 	"github.com/mattermost/mattermost-server/model"
 )
 
-func EmmerdeMaison(i *instance.Instance, event *model.WebSocketEvent) error {
+func EmmerdeMaison(i instance.Instance, event *model.WebSocketEvent) error {
 	if event.EventType() != "posted" {
 		return nil
 	}

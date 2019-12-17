@@ -10,7 +10,7 @@ import (
 	"github.com/mattermost/mattermost-server/model"
 )
 
-func Parrot(i *instance.Instance, event *model.WebSocketEvent) error {
+func Parrot(i instance.Instance, event *model.WebSocketEvent) error {
 	if event.EventType() != "posted" {
 		return nil
 	}

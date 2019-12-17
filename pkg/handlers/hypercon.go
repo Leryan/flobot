@@ -9,7 +9,7 @@ import (
 	"github.com/mattermost/mattermost-server/model"
 )
 
-func HyperCon(i *instance.Instance, event *model.WebSocketEvent) error {
+func HyperCon(i instance.Instance, event *model.WebSocketEvent) error {
 	if event.EventType() != "posted" {
 		return nil
 	}

@@ -19,7 +19,7 @@ type triggered struct {
 	triggers sync.Map
 }
 
-func (t *triggered) handleTriggerAdd(i *instance.Instance, post *model.Post) error {
+func (t *triggered) handleTriggerAdd(i instance.Instance, post *model.Post) error {
 	subs := triggerAdd.FindStringSubmatch(post.Message)
 
 	if len(subs) != 3 {
@@ -32,7 +32,7 @@ func (t *triggered) handleTriggerAdd(i *instance.Instance, post *model.Post) err
 	return nil
 }
 
-func (t *triggered) handleTriggerDel(i *instance.Instance, post *model.Post) error {
+func (t *triggered) handleTriggerDel(i instance.Instance, post *model.Post) error {
 	subs := triggerDel.FindStringSubmatch(post.Message)
 
 	if len(subs) != 2 {
@@ -44,7 +44,7 @@ func (t *triggered) handleTriggerDel(i *instance.Instance, post *model.Post) err
 	return nil
 }
 
-func (t *triggered) handleTriggerList(i *instance.Instance, post *model.Post) error {
+func (t *triggered) handleTriggerList(i instance.Instance, post *model.Post) error {
 	trigs := make([]string, 0)
 	t.triggers.Range(func(key interface{}, value interface{}) bool {
 		trigs = append(trigs, fmt.Sprintf(" * `%s`: %s", key, value))
@@ -62,7 +62,7 @@ func (t *triggered) handleTriggerList(i *instance.Instance, post *model.Post) er
 	return nil
 }
 
-func (t *triggered) handleMessage(i *instance.Instance, post *model.Post) error {
+func (t *triggered) handleMessage(i instance.Instance, post *model.Post) error {
 	t.triggers.Range(func(key interface{}, value interface{}) bool {
 		if strings.Contains(strings.ToLower(post.Message), fmt.Sprintf("*%s*", key)) {
 			i.Client().CreatePost(&model.Post{Message: fmt.Sprintf("%s", value), ChannelId: post.ChannelId})
@@ -73,7 +73,7 @@ func (t *triggered) handleMessage(i *instance.Instance, post *model.Post) error 
 	return nil
 }
 
-func (t *triggered) Handler(i *instance.Instance, event *model.WebSocketEvent) error {
+func (t *triggered) Handler(i instance.Instance, event *model.WebSocketEvent) error {
 	if post, err := helpers.DecodePost(event); err != nil {
 		return nil
 	} else if post != nil {

@@ -19,7 +19,7 @@ func main() {
 			defer wg.Done()
 			log.Printf(
 				"exit with: %v",
-				instance.NewFromCfg(cfg).
+				instance.NewMattermost(cfg).
 					AddMiddleware(middlewares.Security).
 					AddHandler(handlers.Console).
 					AddHandler(handlers.Parrot).
