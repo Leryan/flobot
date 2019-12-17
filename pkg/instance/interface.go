@@ -14,6 +14,7 @@ type Instance interface {
 	Handle(event *model.WebSocketEvent)
 	AddHandler(handler Handler) Instance
 	AddMiddleware(middleware Middleware) Instance
+	SpaceOf(channel string) (string, error)
 	Run() error
 }
 

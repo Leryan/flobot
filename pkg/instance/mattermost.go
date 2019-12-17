@@ -6,6 +6,8 @@ import (
 	"log"
 	"sync"
 
+	"github.com/pkg/errors"
+
 	"github.com/mattermost/mattermost-server/model"
 )
 
@@ -136,5 +138,13 @@ func (i *mattermost) announce() {
 
 	if _, resp := i.client.CreatePost(post); resp.Error != nil {
 		panic(resp.Error.Error())
+	}
+}
+
+func (i *mattermost) SpaceOf(channel string) (string, error) {
+	if ichan, err := i.client.GetChannel(channel, ""); err.Error != nil {
+		return "", errors.New(err.Error.DetailedError)
+	} else {
+		return ichan.TeamId, nil
 	}
 }
