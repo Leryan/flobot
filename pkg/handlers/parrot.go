@@ -3,7 +3,7 @@ package handlers
 import (
 	"encoding/json"
 	"flobot/pkg/instance"
-	"fmt"
+	"strings"
 
 	"github.com/pkg/errors"
 
@@ -21,14 +21,27 @@ func Parrot(i *instance.Instance, event *model.WebSocketEvent) error {
 		return errors.Wrap(err, "parrot json decode")
 	}
 
-	_, resp := i.Client().CreatePost(&model.Post{
-		ChannelId: i.Cfg().DebugChan,
-		Message:   fmt.Sprintf("Parrrrrrrrrot: %s", post.Message),
-	})
+	pref := "!perroquet "
+	if strings.HasPrefix(post.Message, pref) {
+		cmd := post.Message[len(pref):]
 
-	if resp.Error != nil {
-		return errors.New(resp.Error.DetailedError)
+		if strings.Contains(cmd, "!perroquet") {
+			i.Client().CreatePost(&model.Post{
+				Message:   "me prends pas pour un dindon toi !",
+				ChannelId: post.ChannelId,
+				RootId:    post.Id,
+			})
+			return nil
+		}
+
+		_, resp := i.Client().CreatePost(&model.Post{
+			ChannelId: post.ChannelId,
+			Message:   cmd,
+		})
+
+		if resp.Error != nil {
+			return errors.New(resp.Error.DetailedError)
+		}
 	}
-
 	return nil
 }

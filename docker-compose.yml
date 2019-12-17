@@ -1,0 +1,17 @@
+version: '3'
+
+volumes:
+  pg:
+
+services:
+  pg:
+    image: postgres:latest
+    volumes:
+      - pg:/data/postgres
+    ports:
+      - "5432:5432"
+    environment:
+      - POSTGRES_USER=mattermost
+      - POSTGRES_PASSWORD=mattermost
+      - POSTGRES_DB=mattermost
+      - PGDATA=/data/postgres
