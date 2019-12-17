@@ -28,7 +28,7 @@ func (i *mattermost) Run() error {
 	for {
 		select {
 		case resp := <-i.ws.EventChannel:
-			i.Handle(resp)
+			go i.Handle(resp)
 		}
 	}
 }
@@ -61,12 +61,14 @@ func (i *mattermost) Handle(event *model.WebSocketEvent) {
 		}
 	}
 	for _, handler := range i.handlers {
-		go i.handleError(handler, handler(i, event))
+		i.handleError(handler, handler(i, event))
 	}
 }
 
 func (i *mattermost) handleError(h Handler, err error) {
-	log.Printf("error from handler %s: %v", h.Name(), err)
+	if err != nil {
+		log.Printf("error from handler %s: %v", h.Name(), err)
+	}
 }
 
 func (i *mattermost) WS() *model.WebSocketClient {
