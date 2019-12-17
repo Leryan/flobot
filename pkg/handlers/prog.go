@@ -71,87 +71,77 @@ func (p *proghandler) Handle(i instance.Instance, event *model.WebSocketEvent) e
 	cmd := strings.Split(post.Message[6:], " ")
 
 	if len(cmd) < 1 {
-		i.Client().CreatePost(&model.Post{Message: "au moins 1 param", RootId: post.Id, ChannelId: post.ChannelId})
-		return nil
+		return helpers.Reply(i, *post, "au moins 1 param")
 	}
 
 	defer func() {
 		if r := recover(); r != nil {
-			i.Client().CreatePost(&model.Post{Message: fmt.Sprintf("cétoupouri: %v", r), RootId: post.Id, ChannelId: post.ChannelId})
+			helpers.Reply(i, *post, fmt.Sprintf("cétoupouri: %v", r))
 		}
 	}()
 
 	if cmd[0] == "create" {
 		p.progs.LoadOrStore(post.UserId+cmd[1], newProg(cmd[1], post.UserId))
-		i.Client().CreatePost(&model.Post{Message: "programme créé rien que pour toi :3", RootId: post.Id, ChannelId: post.ChannelId})
-		return nil
+		return helpers.Reply(i, *post, "programme créé rien que pour toi :3")
 	} else if cmd[0] == "load" {
 		progsProg, ok := p.progs.Load(post.UserId + cmd[1])
 		if ok {
 			p.current.Store(post.UserId, progsProg)
-			i.Client().CreatePost(&model.Post{Message: "chargé !", RootId: post.Id, ChannelId: post.ChannelId})
+			return helpers.Reply(i, *post, "chargé !")
 		} else {
 			var tmp prog
 			if err := p.store.Collection("prog").Get(post.UserId, &tmp); err != nil {
-				i.Client().CreatePost(&model.Post{Message: err.Error(), RootId: post.Id, ChannelId: post.ChannelId})
-				return nil
+				return helpers.Reply(i, *post, err.Error())
 			}
 			if tmp.Name == "" {
-				i.Client().CreatePost(&model.Post{Message: "l'existe pô", RootId: post.Id, ChannelId: post.ChannelId})
-				return nil
+				return helpers.Reply(i, *post, "l'existe pô")
 			}
 
 			p.progs.Store(post.UserId+cmd[1], &tmp)
 			p.current.Store(post.UserId, &tmp)
-			i.Client().CreatePost(&model.Post{Message: "chargé depuis la db !", RootId: post.Id, ChannelId: post.ChannelId})
+			return helpers.Reply(i, *post, "chargé depuis la db !")
 		}
-		return nil
 	} else if cmd[0] == "del" {
 		p.progs.Delete(post.UserId + cmd[1])
 		p.current.Delete(post.UserId)
-		i.Client().CreatePost(&model.Post{Message: "apu !", RootId: post.Id, ChannelId: post.ChannelId})
-		return nil
+		return helpers.Reply(i, *post, "apu !")
 	}
 
 	cp, ok := p.current.Load(post.UserId)
 	if !ok {
-		i.Client().CreatePost(&model.Post{Message: "faut d’abord charger un prog", RootId: post.Id, ChannelId: post.ChannelId})
-		return nil
+		return helpers.Reply(i, *post, "faut d’abord charger un prog")
 	}
 
 	P := cp.(*prog)
 
 	if cmd[0] == "save" {
 		p.store.Collection("prog").Set(post.UserId, P)
-		i.Client().CreatePost(&model.Post{Message: "saved", RootId: post.Id, ChannelId: post.ChannelId})
+		return helpers.Reply(i, *post, "sauvéééé")
 	} else if cmd[0] == "a" {
 		if len(P.Instructions) >= 200 {
-			i.Client().CreatePost(&model.Post{Message: "limite d’instruction atteinte", RootId: post.Id, ChannelId: post.ChannelId})
-			return nil
+			return helpers.Reply(i, *post, "limite d’instructions atteinte")
 		}
 		P.Instructions = append(P.Instructions, instruction{
 			Op:     cmd[1],
 			Params: cmd[2:],
 		})
-		i.Client().CreatePost(&model.Post{Message: "added", RootId: post.Id, ChannelId: post.ChannelId})
+		return helpers.Reply(i, *post, "remplacée")
 	} else if cmd[0] == "r" {
 		idx, err := strconv.ParseUint(cmd[1], 10, 64)
 		if err != nil {
-			i.Client().CreatePost(&model.Post{Message: err.Error(), RootId: post.Id, ChannelId: post.ChannelId})
-			return nil
+			return helpers.Reply(i, *post, err.Error())
 		}
 		P.Instructions[idx] = instruction{Op: cmd[2], Params: cmd[3:]}
-		i.Client().CreatePost(&model.Post{Message: "replaced", RootId: post.Id, ChannelId: post.ChannelId})
+		return helpers.Reply(i, *post, "remplacé")
 	} else if cmd[0] == "i" {
 		if len(P.Instructions) >= 200 {
-			i.Client().CreatePost(&model.Post{Message: "limite d’instruction atteinte", RootId: post.Id, ChannelId: post.ChannelId})
-			return nil
+			return helpers.Reply(i, *post, "limite d’instructions atteinte")
 		}
-		i.Client().CreatePost(&model.Post{Message: "not implemented", RootId: post.Id, ChannelId: post.ChannelId})
+		return helpers.Reply(i, *post, "pas implementé")
 	} else if cmd[0] == "run" {
-		i.Client().CreatePost(&model.Post{Message: P.Run(), RootId: post.Id, ChannelId: post.ChannelId})
+		return helpers.Reply(i, *post, P.Run())
 	} else {
-		i.Client().CreatePost(&model.Post{Message: "nan ça existe pô ça", RootId: post.Id, ChannelId: post.ChannelId})
+		return helpers.Reply(i, *post, "nan ça existe pô ça")
 	}
 
 	return nil
