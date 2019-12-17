@@ -17,3 +17,5 @@ deploy: build
 	ssh srv.leila systemctl stop bot
 	ssh srv.leila mv /home/bot/bot-upgrade /home/bot/bot
 	ssh srv.leila systemctl start bot
+	sleep 1
+	ssh srv.leila systemctl status bot
