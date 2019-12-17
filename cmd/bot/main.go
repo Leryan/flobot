@@ -39,10 +39,11 @@ func main() {
 					AddHandler(handlers.Console).
 					AddHandler(handlers.Parrot).
 					AddHandler(handlers.Avis).
-					AddHandler(handlers.NewWerewolf().Handle).
+					//AddHandler(handlers.NewWerewolf().Handle).
 					AddHandler(handlers.DisBonjour).
 					AddHandler(handlers.EmmerdeMaison).
 					AddHandler(handlers.HyperCon).
+					AddHandler(handlers.NewProg().Handle).
 					AddHandler(handlers.NewTriggered(inst, "botdb")).
 					Run(),
 			)
