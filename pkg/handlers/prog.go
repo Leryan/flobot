@@ -32,6 +32,8 @@ type prog struct {
 }
 
 func (p *prog) Run() string {
+	p.vars = make(map[string]string)
+	p.err = nil
 	msg := ""
 	for _, i := range p.Instructions {
 		msg = fmt.Sprintf("%s * %s -> %v\n", msg, i.Op, i.Params)
