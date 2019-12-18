@@ -78,11 +78,14 @@ func (t *triggered) handleTriggerAdd(i instance.Instance, post *model.Post) erro
 	subs := triggerAdd.FindStringSubmatch(post.Message)
 
 	if len(subs) != 3 {
-		i.Client().CreatePost(&model.Post{Message: "je comprends pô", RootId: post.Id, ChannelId: post.ChannelId})
-		return nil
+		return helpers.Reply(i, *post, "lapô compri, lapô compri.")
 	}
 
-	return t.find(space).save(space, &trigger{Keyword: strings.ToLower(subs[1]), Value: subs[2], Space: space})
+	if err := t.find(space).save(space, &trigger{Keyword: strings.ToLower(subs[1]), Value: subs[2], Space: space}); err != nil {
+		return helpers.Reply(i, *post, "ah, ça a merdé : "+err.Error())
+	}
+
+	return helpers.Reply(i, *post, "c’est fait")
 }
 
 func (t *triggered) handleTriggerDel(i instance.Instance, post *model.Post) error {
@@ -162,6 +165,8 @@ func (t *triggered) Handler(i instance.Instance, event *model.WebSocketEvent) er
 			return t.handleTriggerDel(i, post)
 		} else if strings.HasPrefix(post.Message, "!trigger list") {
 			return t.handleTriggerList(i, post)
+		} else if strings.HasPrefix(post.Message, "!trigger ") {
+			return helpers.Reply(i, *post, "wut?")
 		} else {
 			return t.handleMessage(i, post)
 		}
