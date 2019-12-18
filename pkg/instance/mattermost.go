@@ -22,6 +22,7 @@ type mattermost struct {
 	handlers       []Handler
 	middlewares    []Middleware
 	store          store.Store
+	running        bool
 }
 
 func (i *mattermost) Store() store.Store {
@@ -33,6 +34,7 @@ func (h Handler) Name() string {
 }
 
 func (i *mattermost) Run() error {
+	i.running = true
 	for {
 		select {
 		case resp := <-i.ws.EventChannel:
@@ -42,40 +44,35 @@ func (i *mattermost) Run() error {
 }
 
 func (i *mattermost) AddMiddleware(middleware Middleware) Instance {
-	i.addHandlerLock.Lock()
-	defer i.addHandlerLock.Unlock()
+	if i.running {
+		panic("programming error: cannot add middleware while running")
+	}
 	i.middlewares = append(i.middlewares, middleware)
 	return i
 }
 
 func (i *mattermost) AddHandler(handler Handler) Instance {
-	i.addHandlerLock.Lock()
-	defer i.addHandlerLock.Unlock()
+	if i.running {
+		panic("programming error: cannot add handler while running")
+	}
 	i.handlers = append(i.handlers, handler)
 	return i
 }
 
 func (i *mattermost) Handle(event *model.WebSocketEvent) {
-	i.addHandlerLock.RLock()
-	defer i.addHandlerLock.RUnlock()
-	for _, middleware := range i.middlewares {
-		cont, err := middleware(i, event)
-		if err != nil {
-			log.Printf("error from middleware: %v", err)
+	for im, middleware := range i.middlewares {
+		if cont, err := middleware(i, event); err != nil {
+			log.Printf("error from middleware: %d: %v", im, err)
 			return
-		}
-		if !cont {
+		} else if !cont {
 			return
 		}
 	}
-	for _, handler := range i.handlers {
-		i.handleError(handler, handler(i, event))
-	}
-}
 
-func (i *mattermost) handleError(h Handler, err error) {
-	if err != nil {
-		log.Printf("error from handler %s: %v", h.Name(), err)
+	for ih, handler := range i.handlers {
+		if err := handler(i, event); err != nil {
+			log.Printf("error from handler: %d: %v", ih, err)
+		}
 	}
 }
 
@@ -137,20 +134,20 @@ func (i *mattermost) websocket() {
 }
 
 func (i *mattermost) announce() {
-	post := &model.Post{}
+	post := model.Post{}
 	post.ChannelId = i.cfg.DebugChan
 	post.Message = fmt.Sprintf("bot %s is up", i.cfg.Name)
 
 	post.RootId = ""
 
-	if _, resp := i.client.CreatePost(post); resp.Error != nil {
-		panic(resp.Error.Error())
+	if _, err := i.client.CreatePost(&post); err.Error != nil {
+		panic(err.Error.ToJson())
 	}
 }
 
 func (i *mattermost) SpaceOf(channel string) (string, error) {
 	if ichan, err := i.client.GetChannel(channel, ""); err.Error != nil {
-		return "", errors.New(err.Error.DetailedError)
+		return "", errors.New(err.Error.ToJson())
 	} else {
 		return ichan.TeamId, nil
 	}

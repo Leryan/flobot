@@ -15,7 +15,6 @@ import (
 
 var triggerAdd = regexp.MustCompile("!trigger add ([a-zA-Z0-9_]+) (.+)")
 var triggerDel = regexp.MustCompile("!trigger del ([a-zA-Z0-9_]+)")
-var triggerEmote = regexp.MustCompile("^:([a-zA-Z0-9_]+):$")
 
 type triggered struct {
 	spaces sync.Map
@@ -134,24 +133,35 @@ func (t *triggered) handleMessage(i instance.Instance, post *model.Post) error {
 	}
 	msg := strings.ToLower(post.Message)
 
+	var fval string
+
 	t.find(space).triggers.Range(func(key interface{}, value interface{}) bool {
 		c1 := fmt.Sprintf("%s ", key)
 		c2 := fmt.Sprintf(" %s ", key)
 		c3 := fmt.Sprintf(" %s", key)
+		c4 := fmt.Sprintf(":%s:", key)
 
-		if strings.Contains(msg, c2) || strings.HasPrefix(msg, c1) || strings.HasSuffix(msg, c3) || key.(string) == msg {
-			i.Client().CreatePost(&model.Post{Message: fmt.Sprintf("%s", value.(trigger).Value), ChannelId: post.ChannelId})
-			return false
-		}
-
-		subs := triggerEmote.FindStringSubmatch(strings.ToLower(post.Message))
-
-		if len(subs) == 2 && fmt.Sprintf("%s", key) == subs[1] {
-			i.Client().CreatePost(&model.Post{Message: fmt.Sprintf("%s", value.(trigger).Value), ChannelId: post.ChannelId})
+		if strings.Contains(msg, c2) || strings.HasPrefix(msg, c1) || strings.HasSuffix(msg, c3) || key.(string) == msg || msg == c4 {
+			if post.RootId != "" {
+				fval = value.(trigger).Value
+				return false
+			}
+			fval = value.(trigger).Value
 			return false
 		}
 		return true
 	})
+
+	if fval == "" {
+		return nil
+	}
+
+	if post.RootId == "" {
+		i.Client().CreatePost(&model.Post{Message: fval, ChannelId: post.ChannelId})
+	} else {
+		return helpers.Reply(i, *post, fval)
+	}
+
 	return nil
 }
 

@@ -3,11 +3,19 @@ package helpers
 import (
 	"encoding/json"
 	"flobot/pkg/instance"
-
-	"github.com/pkg/errors"
+	"fmt"
 
 	"github.com/mattermost/mattermost-server/model"
 )
+
+type Error struct {
+	Post model.Post
+	Err  string
+}
+
+func (e Error) Error() string {
+	return e.Err
+}
 
 func DecodePost(event *model.WebSocketEvent) (*model.Post, error) {
 	if event.EventType() != "posted" {
@@ -23,9 +31,29 @@ func DecodePost(event *model.WebSocketEvent) (*model.Post, error) {
 }
 
 func Reply(i instance.Instance, post model.Post, msg string) error {
-	_, err := i.Client().CreatePost(&model.Post{Message: msg, RootId: post.Id, ChannelId: post.ChannelId})
+	rootid := post.RootId
+	if post.RootId == "" {
+		rootid = post.Id
+	}
+	return Post(i, model.Post{
+		Message:   msg,
+		RootId:    rootid,
+		ChannelId: post.ChannelId,
+		ParentId:  post.ParentId,
+	})
+}
+
+func Post(i instance.Instance, post model.Post) error {
+	_, err := i.Client().CreatePost(&post)
 	if err.Error != nil {
-		return errors.New(err.Error.DetailedError)
+		i.Client().CreatePost(&model.Post{
+			ChannelId: i.Cfg().DebugChan,
+			Message:   fmt.Sprintf("bug: `%s` from message: \n```\n%s\n```", err.Error.ToJson(), post.ToJson()),
+		})
+		return Error{
+			Post: post,
+			Err:  err.Error.ToJson(),
+		}
 	}
 	return nil
 }
