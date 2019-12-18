@@ -15,6 +15,7 @@ import (
 
 var triggerAdd = regexp.MustCompile("!trigger add ([a-zA-Z0-9_]+) (.+)")
 var triggerDel = regexp.MustCompile("!trigger del ([a-zA-Z0-9_]+)")
+var triggerEmote = regexp.MustCompile("^:([a-zA-Z0-9_]+):$")
 
 type triggered struct {
 	spaces sync.Map
@@ -114,7 +115,7 @@ func (t *triggered) handleTriggerList(i instance.Instance, post *model.Post) err
 
 	msg := "Ah, ben yen a pas.\n\n * `!trigger add <nom> <ce que tu veux>`\n * `!trigger del <nom>`\n * `!trigger list`\n"
 	if len(trigs) > 0 {
-		msg = "Liste des spaces :triggered:\n\n"
+		msg = "Liste des :triggered:\n\n"
 		msg = msg + strings.Join(trigs, "\n")
 	}
 
@@ -130,6 +131,13 @@ func (t *triggered) handleMessage(i instance.Instance, post *model.Post) error {
 	}
 	t.find(space).triggers.Range(func(key interface{}, value interface{}) bool {
 		if strings.Contains(strings.ToLower(post.Message), fmt.Sprintf("*%s*", key)) {
+			i.Client().CreatePost(&model.Post{Message: fmt.Sprintf("%s", value.(trigger).Value), ChannelId: post.ChannelId})
+			return false
+		}
+
+		subs := triggerEmote.FindStringSubmatch(strings.ToLower(post.Message))
+
+		if len(subs) == 2 && fmt.Sprintf("%s", key) == subs[1] {
 			i.Client().CreatePost(&model.Post{Message: fmt.Sprintf("%s", value.(trigger).Value), ChannelId: post.ChannelId})
 			return false
 		}
