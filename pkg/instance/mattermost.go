@@ -2,6 +2,7 @@ package instance
 
 import (
 	"flobot/pkg/conf"
+	"flobot/pkg/store"
 	"fmt"
 	"log"
 	"sync"
@@ -20,6 +21,11 @@ type mattermost struct {
 	addHandlerLock sync.RWMutex
 	handlers       []Handler
 	middlewares    []Middleware
+	store          store.Store
+}
+
+func (i *mattermost) Store() store.Store {
+	return i.store
 }
 
 func (h Handler) Name() string {
@@ -91,9 +97,10 @@ func (i *mattermost) Me() model.User {
 
 // NewMattermost creates a new instance and calls internal init before returning.
 // If init cannot proceed, it will panic.
-func NewMattermost(cfg conf.Instance) Instance {
+func NewMattermost(cfg conf.Instance, store store.Store) Instance {
 	i := &mattermost{
-		cfg: cfg,
+		cfg:   cfg,
+		store: store,
 	}
 	i.init()
 	return i

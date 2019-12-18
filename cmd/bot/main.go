@@ -5,6 +5,7 @@ import (
 	"flobot/pkg/handlers"
 	"flobot/pkg/instance"
 	"flobot/pkg/middlewares"
+	store2 "flobot/pkg/store"
 	"fmt"
 	"runtime/debug"
 
@@ -15,6 +16,7 @@ import (
 )
 
 func main() {
+	store := store2.NewJSONStore("botdb")
 	wg := sync.WaitGroup{}
 	for i, cfg := range conf.Instances() {
 		log.Printf("spawning instance number %d", i)
@@ -34,7 +36,7 @@ func main() {
 				}
 			}()
 
-			inst = instance.NewMattermost(cfg)
+			inst = instance.NewMattermost(cfg, store)
 			log.Printf(
 				"exit with: %v",
 				inst.AddMiddleware(middlewares.Security).

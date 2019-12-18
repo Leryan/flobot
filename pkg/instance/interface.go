@@ -2,6 +2,7 @@ package instance
 
 import (
 	"flobot/pkg/conf"
+	"flobot/pkg/store"
 
 	"github.com/mattermost/mattermost-server/model"
 )
@@ -16,6 +17,7 @@ type Instance interface {
 	AddMiddleware(middleware Middleware) Instance
 	SpaceOf(channel string) (string, error)
 	Run() error
+	Store() store.Store
 }
 
 type Handler func(i Instance, event *model.WebSocketEvent) error

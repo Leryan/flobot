@@ -5,16 +5,26 @@ import (
 	"fmt"
 	"os"
 	"path"
+	"sync"
 
 	"github.com/pkg/errors"
 )
 
 type jsonStore struct {
-	root string
+	root        string
+	collections sync.Map
+	lock        sync.Mutex
 }
 
 func (s *jsonStore) Collection(name string) Collection {
-	return &jsonCollection{name: name, root: s.root}
+	s.lock.Lock()
+	defer s.lock.Unlock()
+	coll, found := s.collections.Load(name)
+	if !found {
+		coll = &jsonCollection{name: name, root: s.root}
+		s.collections.Store(name, coll)
+	}
+	return coll.(*jsonCollection)
 }
 
 func NewJSONStore(root string) Store {
@@ -28,6 +38,7 @@ func NewJSONStore(root string) Store {
 type jsonCollection struct {
 	name string
 	root string
+	lock sync.Mutex
 }
 
 func (c *jsonCollection) collkey(key string) string {
@@ -35,7 +46,9 @@ func (c *jsonCollection) collkey(key string) string {
 }
 
 func (c *jsonCollection) Set(key string, value interface{}) error {
-	f, err := os.OpenFile(c.collkey(key), os.O_WRONLY|os.O_CREATE, 0640)
+	c.lock.Lock()
+	defer c.lock.Unlock()
+	f, err := os.OpenFile(c.collkey(key), os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0640)
 	if err != nil {
 		return errors.Wrap(err, "open store file.Set")
 	}
@@ -44,6 +57,8 @@ func (c *jsonCollection) Set(key string, value interface{}) error {
 }
 
 func (c *jsonCollection) Get(key string, out interface{}) error {
+	c.lock.Lock()
+	defer c.lock.Unlock()
 	f, err := os.Open(c.collkey(key))
 	if os.IsNotExist(err) {
 		return nil
@@ -56,6 +71,8 @@ func (c *jsonCollection) Get(key string, out interface{}) error {
 }
 
 func (c *jsonCollection) Del(key string) error {
+	c.lock.Lock()
+	defer c.lock.Unlock()
 	_, err := os.Stat(c.collkey(key))
 	if os.IsNotExist(err) {
 		return nil

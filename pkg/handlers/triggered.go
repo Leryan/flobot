@@ -180,10 +180,8 @@ func NewTriggered(i instance.Instance, dbroot string) instance.Handler {
 		panic(err)
 	}
 
-	s := store.NewJSONStore(dbroot)
-
 	t := &triggered{
-		store: s,
+		store: i.Store(),
 	}
 
 	for _, team := range teams {
