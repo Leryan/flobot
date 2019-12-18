@@ -29,6 +29,8 @@ func main() {
 					log.Printf("paniced: %v", r)
 					debug.PrintStack()
 					inst.Client().CreatePost(&model.Post{ChannelId: inst.Cfg().DebugChan, Message: fmt.Sprintf("panic: %v", r)})
+				} else {
+					inst.Client().CreatePost(&model.Post{ChannelId: inst.Cfg().DebugChan, Message: "/quit"})
 				}
 			}()
 

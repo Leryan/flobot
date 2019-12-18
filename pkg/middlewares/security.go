@@ -4,11 +4,12 @@ import (
 	"flobot/pkg/helpers"
 	"flobot/pkg/instance"
 	"regexp"
+	"strings"
 
 	"github.com/mattermost/mattermost-server/model"
 )
 
-var emmerde = regexp.MustCompile(".*flop.+[aà].+quit[t]?[eé]?.+([a-zA-Z]+).+c.+")
+var emmerde = regexp.MustCompile(".*flop.+quit.+")
 
 func Security(i instance.Instance, event *model.WebSocketEvent) (bool, error) {
 	post, err := helpers.DecodePost(event)
@@ -23,7 +24,8 @@ func Security(i instance.Instance, event *model.WebSocketEvent) (bool, error) {
 		return false, nil
 	}
 
-	if emmerde.MatchString(post.Message) {
+	msg := strings.ToLower(post.Message)
+	if strings.Contains(msg, "flop") || strings.Contains(msg, "quit") {
 		return false, helpers.Reply(i, *post, "Me prends pas pour un dindon toi !")
 	}
 
