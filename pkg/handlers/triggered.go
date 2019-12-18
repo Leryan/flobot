@@ -129,8 +129,14 @@ func (t *triggered) handleMessage(i instance.Instance, post *model.Post) error {
 	if err != nil {
 		return err
 	}
+	msg := strings.ToLower(post.Message)
+
 	t.find(space).triggers.Range(func(key interface{}, value interface{}) bool {
-		if strings.Contains(strings.ToLower(post.Message), fmt.Sprintf("*%s*", key)) {
+		c1 := fmt.Sprintf("%s ", key)
+		c2 := fmt.Sprintf(" %s ", key)
+		c3 := fmt.Sprintf(" %s", key)
+
+		if strings.Contains(msg, c2) || strings.HasPrefix(msg, c1) || strings.HasSuffix(msg, c3) || key.(string) == msg {
 			i.Client().CreatePost(&model.Post{Message: fmt.Sprintf("%s", value.(trigger).Value), ChannelId: post.ChannelId})
 			return false
 		}
