@@ -141,10 +141,6 @@ func (t *triggered) handleMessage(c instance.Channel, post model.Post) error {
 		c4 := fmt.Sprintf(":%s:", key)
 
 		if strings.Contains(msg, c2) || strings.HasPrefix(msg, c1) || strings.HasSuffix(msg, c3) || key.(string) == msg || msg == c4 {
-			if post.RootId != "" {
-				fval = value.(trigger).Value
-				return false
-			}
 			fval = value.(trigger).Value
 			return false
 		}

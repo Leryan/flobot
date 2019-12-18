@@ -14,7 +14,11 @@ type Channel struct {
 
 func (c *Channel) PostOrReply(to model.Post, msg string) (*model.Post, error) {
 	to.ChannelId = c.id
-	return Reply(c.i, c.client, to, msg)
+	if to.RootId != "" {
+		return Reply(c.i, c.client, to, msg)
+	} else {
+		return c.Post(model.Post{Message: msg})
+	}
 }
 
 func (c *Channel) Reply(to model.Post, msg string) (*model.Post, error) {
