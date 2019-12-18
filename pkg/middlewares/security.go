@@ -1,8 +1,8 @@
 package middlewares
 
 import (
-	"flobot/pkg/helpers"
 	"flobot/pkg/instance"
+	"flobot/pkg/instance/mattermost"
 	"regexp"
 	"strings"
 
@@ -12,7 +12,7 @@ import (
 var emmerde = regexp.MustCompile(".*flop.+quit.+")
 
 func Security(i instance.Instance, event *model.WebSocketEvent) (bool, error) {
-	post, err := helpers.DecodePost(event)
+	post, err := mattermost.DecodePost(*event)
 	if err != nil {
 		return false, err
 	}
@@ -20,13 +20,19 @@ func Security(i instance.Instance, event *model.WebSocketEvent) (bool, error) {
 		return true, nil
 	}
 
-	if post.UserId == i.Me().Id {
+	me, err := i.Client().Me.Me()
+	if err != nil {
+		return false, err
+	}
+
+	if post.UserId == me.Id {
 		return false, nil
 	}
 
 	msg := strings.ToLower(post.Message)
 	if strings.Contains(msg, "flop") || strings.Contains(msg, "quit") {
-		return false, helpers.Reply(i, *post, "Me prends pas pour un dindon toi !")
+		_, err := i.Client().Chan.Get(post.ChannelId).Reply(*post, "Me prends pas pour un dindon toi !")
+		return false, err
 	}
 
 	return true, nil

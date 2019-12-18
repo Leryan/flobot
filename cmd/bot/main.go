@@ -4,6 +4,7 @@ import (
 	"flobot/pkg/conf"
 	"flobot/pkg/handlers"
 	"flobot/pkg/instance"
+	"flobot/pkg/instance/mattermost"
 	"flobot/pkg/middlewares"
 	store2 "flobot/pkg/store"
 	"fmt"
@@ -27,16 +28,19 @@ func main() {
 			var inst instance.Instance
 
 			defer func() {
+				msg := "/quit"
 				if r := recover(); r != nil {
 					log.Printf("paniced: %v", r)
 					debug.PrintStack()
-					inst.Client().CreatePost(&model.Post{ChannelId: inst.Cfg().DebugChan, Message: fmt.Sprintf("panic: %v", r)})
-				} else {
-					inst.Client().CreatePost(&model.Post{ChannelId: inst.Cfg().DebugChan, Message: "/quit"})
+					msg = fmt.Sprintf("panic: %v", r)
+
 				}
+				inst.Client().Chan.Get(inst.Cfg().DebugChan).Post(
+					model.Post{Message: msg},
+				)
 			}()
 
-			inst = instance.NewMattermost(cfg, store)
+			inst = mattermost.NewMattermost(cfg, store)
 			log.Printf(
 				"exit with: %v",
 				inst.AddMiddleware(middlewares.Security).
@@ -48,7 +52,7 @@ func main() {
 					AddHandler(handlers.EmmerdeMaison).
 					AddHandler(handlers.HyperCon).
 					AddHandler(handlers.NewProg().Handle).
-					AddHandler(handlers.NewTriggered(inst, "botdb")).
+					AddHandler(handlers.NewTriggered(inst)).
 					Run(),
 			)
 		}(cfg)

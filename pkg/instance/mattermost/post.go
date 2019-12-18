@@ -1,4 +1,4 @@
-package helpers
+package mattermost
 
 import (
 	"encoding/json"
@@ -8,16 +8,7 @@ import (
 	"github.com/mattermost/mattermost-server/model"
 )
 
-type Error struct {
-	Post model.Post
-	Err  string
-}
-
-func (e Error) Error() string {
-	return e.Err
-}
-
-func DecodePost(event *model.WebSocketEvent) (*model.Post, error) {
+func DecodePost(event model.WebSocketEvent) (*model.Post, error) {
 	if event.EventType() != "posted" {
 		return nil, nil
 	}
@@ -30,12 +21,12 @@ func DecodePost(event *model.WebSocketEvent) (*model.Post, error) {
 	return &post, nil
 }
 
-func Reply(i instance.Instance, post model.Post, msg string) error {
+func Reply(i instance.Instance, client *model.Client4, post model.Post, msg string) (*model.Post, error) {
 	rootid := post.RootId
 	if post.RootId == "" {
 		rootid = post.Id
 	}
-	return Post(i, model.Post{
+	return Post(i, client, model.Post{
 		Message:   msg,
 		RootId:    rootid,
 		ChannelId: post.ChannelId,
@@ -43,17 +34,17 @@ func Reply(i instance.Instance, post model.Post, msg string) error {
 	})
 }
 
-func Post(i instance.Instance, post model.Post) error {
-	_, err := i.Client().CreatePost(&post)
+func Post(i instance.Instance, client *model.Client4, post model.Post) (*model.Post, error) {
+	npost, err := client.CreatePost(&post)
 	if err.Error != nil {
-		i.Client().CreatePost(&model.Post{
+		client.CreatePost(&model.Post{
 			ChannelId: i.Cfg().DebugChan,
 			Message:   fmt.Sprintf("bug: `%s` from message: \n```\n%s\n```", err.Error.ToJson(), post.ToJson()),
 		})
-		return Error{
-			Post: post,
-			Err:  err.Error.ToJson(),
+		return nil, instance.Error{
+			Code:   err.StatusCode,
+			Status: err.Error.ToJson(),
 		}
 	}
-	return nil
+	return npost, nil
 }

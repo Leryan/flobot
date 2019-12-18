@@ -1,13 +1,14 @@
 package handlers
 
 import (
+	"flobot/pkg/helpers"
+	"flobot/pkg/instance/mattermost"
 	"fmt"
 	"regexp"
 	"sort"
 	"strings"
 	"sync"
 
-	"flobot/pkg/helpers"
 	"flobot/pkg/instance"
 	"flobot/pkg/store"
 
@@ -70,43 +71,41 @@ func (t *triggered) find(space string) *spaceTrigger {
 	return ts.(*spaceTrigger)
 }
 
-func (t *triggered) handleTriggerAdd(i instance.Instance, post *model.Post) error {
-	space, err := i.SpaceOf(post.ChannelId)
+func (t *triggered) handleTriggerAdd(c instance.Channel, post model.Post) error {
+	space, err := c.Space()
 	if err != nil {
 		return err
 	}
 	subs := triggerAdd.FindStringSubmatch(post.Message)
 
 	if len(subs) != 3 {
-		return helpers.Reply(i, *post, "lapô compri, lapô compri.")
+		return helpers.Discard(c.Reply(post, "lapô compri, lapô compri."))
 	}
 
 	if err := t.find(space).save(space, &trigger{Keyword: strings.ToLower(subs[1]), Value: subs[2], Space: space}); err != nil {
-		return helpers.Reply(i, *post, "ah, ça a merdé : "+err.Error())
+		return helpers.Discard(c.Reply(post, "ah, ça a merdé : "+err.Error()))
 	}
 
-	return helpers.Reply(i, *post, "c’est fait")
+	return helpers.Discard(c.Reply(post, "c’est fait"))
 }
 
-func (t *triggered) handleTriggerDel(i instance.Instance, post *model.Post) error {
+func (t *triggered) handleTriggerDel(c instance.Channel, post model.Post) error {
 	subs := triggerDel.FindStringSubmatch(post.Message)
 
 	if len(subs) != 2 {
-		i.Client().CreatePost(&model.Post{Message: "t’y es preeeeesque", RootId: post.Id, ChannelId: post.ChannelId})
-		return nil
+		return helpers.Discard(c.Post(model.Post{Message: "t’y es preeeeesque", RootId: post.Id, ChannelId: post.ChannelId}))
 	}
 
-	space, err := i.SpaceOf(post.ChannelId)
+	space, err := c.Space()
 	if err != nil {
 		return nil
 	}
 	t.find(space).delete(space, subs[1])
-	i.Client().CreatePost(&model.Post{Message: "Caroline… supprimée.", RootId: post.Id, ChannelId: post.ChannelId})
-	return nil
+	return helpers.Discard(c.Post(model.Post{Message: "Caroline… supprimée.", RootId: post.Id, ChannelId: post.ChannelId}))
 }
 
-func (t *triggered) handleTriggerList(i instance.Instance, post *model.Post) error {
-	space, err := i.SpaceOf(post.ChannelId)
+func (t *triggered) handleTriggerList(c instance.Channel, post model.Post) error {
+	space, err := c.Space()
 	if err != nil {
 		return err
 	}
@@ -123,13 +122,11 @@ func (t *triggered) handleTriggerList(i instance.Instance, post *model.Post) err
 		msg = msg + strings.Join(trigs, "\n")
 	}
 
-	i.Client().CreatePost(&model.Post{Message: msg, ChannelId: post.ChannelId})
-
-	return nil
+	return helpers.Discard(c.Post(model.Post{Message: msg, ChannelId: post.ChannelId}))
 }
 
-func (t *triggered) handleMessage(i instance.Instance, post *model.Post) error {
-	space, err := i.SpaceOf(post.ChannelId)
+func (t *triggered) handleMessage(c instance.Channel, post model.Post) error {
+	space, err := c.Space()
 	if err != nil {
 		return err
 	}
@@ -158,46 +155,40 @@ func (t *triggered) handleMessage(i instance.Instance, post *model.Post) error {
 		return nil
 	}
 
-	if post.RootId == "" {
-		i.Client().CreatePost(&model.Post{Message: fval, ChannelId: post.ChannelId})
-	} else {
-		return helpers.Reply(i, *post, fval)
-	}
-
-	return nil
+	return helpers.Discard(c.PostOrReply(post, fval))
 }
 
-func (t *triggered) Handler(i instance.Instance, event *model.WebSocketEvent) error {
-	if post, err := helpers.DecodePost(event); err != nil {
+func (t *triggered) Handler(i instance.Instance, event model.WebSocketEvent) error {
+	if post, err := mattermost.DecodePost(event); err != nil {
 		return nil
 	} else if post != nil {
+		c := i.Client().Chan.Get(post.ChannelId)
 		if strings.HasPrefix(post.Message, "!trigger add ") {
-			return t.handleTriggerAdd(i, post)
+			return t.handleTriggerAdd(c, *post)
 		} else if strings.HasPrefix(post.Message, "!trigger del") {
-			return t.handleTriggerDel(i, post)
+			return t.handleTriggerDel(c, *post)
 		} else if strings.HasPrefix(post.Message, "!trigger list") {
-			return t.handleTriggerList(i, post)
+			return t.handleTriggerList(c, *post)
 		} else if strings.HasPrefix(post.Message, "!trigger ") {
-			return helpers.Reply(i, *post, "wut?")
+			return helpers.Discard(c.Reply(*post, "wut?"))
 		} else {
-			return t.handleMessage(i, post)
+			return t.handleMessage(c, *post)
 		}
 	}
 	return nil
 }
 
-func NewTriggered(i instance.Instance, dbroot string) instance.Handler {
-	teams, err := i.Client().GetTeamsForUser(i.Me().Id, "")
-	if err.Error != nil {
+func NewTriggered(i instance.Instance) instance.Handler {
+	spaces, err := i.Client().Me.Spaces()
+	if err != nil {
 		panic(err)
 	}
-
 	t := &triggered{
 		store: i.Store(),
 	}
 
-	for _, team := range teams {
-		if err := t.find(team.Id).load(team.Id); err != nil {
+	for _, space := range spaces {
+		if err := t.find(space).load(space); err != nil {
 			panic(err)
 		}
 	}

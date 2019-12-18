@@ -9,7 +9,7 @@ import (
 	"github.com/mattermost/mattermost-server/model"
 )
 
-func HyperCon(i instance.Instance, event *model.WebSocketEvent) error {
+func HyperCon(i instance.Instance, event model.WebSocketEvent) error {
 	if event.EventType() != "posted" {
 		return nil
 	}
@@ -20,7 +20,10 @@ func HyperCon(i instance.Instance, event *model.WebSocketEvent) error {
 	}
 
 	if strings.Contains(post.Message, "hyper con") {
-		i.Client().CreatePost(&model.Post{Message: ":perceval:", ChannelId: post.ChannelId, RootId: post.Id})
+		_, err := i.Client().Chan.Get(post.ChannelId).Post(
+			model.Post{Message: ":perceval:", ChannelId: post.ChannelId, RootId: post.Id},
+		)
+		return err
 	}
 
 	return nil

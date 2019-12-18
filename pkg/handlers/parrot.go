@@ -10,7 +10,7 @@ import (
 	"github.com/mattermost/mattermost-server/model"
 )
 
-func Parrot(i instance.Instance, event *model.WebSocketEvent) error {
+func Parrot(i instance.Instance, event model.WebSocketEvent) error {
 	if event.EventType() != "posted" {
 		return nil
 	}
@@ -25,23 +25,12 @@ func Parrot(i instance.Instance, event *model.WebSocketEvent) error {
 	if strings.HasPrefix(post.Message, pref) {
 		cmd := post.Message[len(pref):]
 
-		if strings.Contains(cmd, "!perroquet") {
-			i.Client().CreatePost(&model.Post{
-				Message:   "me prends pas pour un dindon toi !",
-				ChannelId: post.ChannelId,
-				RootId:    post.Id,
-			})
-			return nil
-		}
-
-		_, resp := i.Client().CreatePost(&model.Post{
+		_, err := i.Client().Chan.Get(post.ChannelId).Post(model.Post{
 			ChannelId: post.ChannelId,
 			Message:   cmd,
 		})
 
-		if resp.Error != nil {
-			return errors.New(resp.Error.DetailedError)
-		}
+		return err
 	}
 	return nil
 }

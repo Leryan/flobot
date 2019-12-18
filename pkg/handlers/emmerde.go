@@ -11,7 +11,7 @@ import (
 	"github.com/mattermost/mattermost-server/model"
 )
 
-func EmmerdeMaison(i instance.Instance, event *model.WebSocketEvent) error {
+func EmmerdeMaison(i instance.Instance, event model.WebSocketEvent) error {
 	if event.EventType() != "posted" {
 		return nil
 	}
@@ -34,11 +34,12 @@ func EmmerdeMaison(i instance.Instance, event *model.WebSocketEvent) error {
 	log.Printf("cmd: %v | auto: %v", cmd, auto)
 
 	if cmd || auto {
-		i.Client().CreatePost(&model.Post{
+		_, err := i.Client().Chan.Get(post.ChannelId).Post(model.Post{
 			Message:   "Y dit qu’y vous emmerde et qu’y rentre à sa maison ! :cartman:",
 			ChannelId: post.ChannelId,
 			RootId:    answerTo,
 		})
+		return err
 	}
 
 	return nil

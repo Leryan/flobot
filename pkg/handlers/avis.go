@@ -9,7 +9,7 @@ import (
 	"github.com/pkg/errors"
 )
 
-func Avis(i instance.Instance, event *model.WebSocketEvent) error {
+func Avis(i instance.Instance, event model.WebSocketEvent) error {
 	if event.EventType() != "posted" {
 		return nil
 	}
@@ -20,11 +20,11 @@ func Avis(i instance.Instance, event *model.WebSocketEvent) error {
 	}
 
 	if strings.Contains(post.Message, " avis ") || strings.HasSuffix(post.Message, " avis") {
-		i.Client().CreatePost(&model.Post{
-			Message:   "heu si j’peux’m’permettre de donner mon avis, heu ben on te l’a pas demandé à toi d’abord :troll:",
-			ChannelId: post.ChannelId,
-			RootId:    post.Id,
-		})
+		_, err := i.Client().Chan.Get(post.ChannelId).Reply(
+			post,
+			"heu si j’peux’m’permettre de donner mon avis, heu ben on te l’a pas demandé à toi d’abord :troll:",
+		)
+		return err
 	}
 
 	return nil

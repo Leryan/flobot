@@ -5,10 +5,11 @@ import (
 	"strings"
 
 	"flobot/pkg/instance"
+
 	"github.com/mattermost/mattermost-server/model"
 )
 
-func DisBonjour(i instance.Instance, event *model.WebSocketEvent) error {
+func DisBonjour(i instance.Instance, event model.WebSocketEvent) error {
 	if event.EventType() != "posted" {
 		return nil
 	}
@@ -19,10 +20,13 @@ func DisBonjour(i instance.Instance, event *model.WebSocketEvent) error {
 	}
 
 	if strings.HasPrefix(post.Message, "!disbonjour") {
-		i.Client().CreatePost(&model.Post{
-			Message:   "Bonjour :wave: ! Moi c’est FloBot, je sais pas faire grand chose, mais tu peux essayer `!perroquet coucou` ou `!trigger list` !\n\nhttps://gitlab.com/Leryan/flobot",
-			ChannelId: post.ChannelId,
-		})
+		_, err := i.Client().Chan.Get(post.ChannelId).Post(
+			model.Post{
+				Message:   "Bonjour :wave: ! Moi c’est FloBot, je sais pas faire grand chose, mais tu peux essayer `!perroquet coucou` ou `!trigger list` !\n\nhttps://gitlab.com/Leryan/flobot",
+				ChannelId: post.ChannelId,
+			},
+		)
+		return err
 	}
 
 	return nil
