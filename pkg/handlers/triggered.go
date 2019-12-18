@@ -3,6 +3,7 @@ package handlers
 import (
 	"fmt"
 	"regexp"
+	"sort"
 	"strings"
 	"sync"
 
@@ -117,7 +118,8 @@ func (t *triggered) handleTriggerList(i instance.Instance, post *model.Post) err
 
 	msg := "Ah, ben yen a pas.\n\n * `!trigger add <nom> <ce que tu veux>`\n * `!trigger del <nom>`\n * `!trigger list`\n"
 	if len(trigs) > 0 {
-		msg = "Liste des :triggered:\n\n"
+		sort.Strings(trigs)
+		msg = fmt.Sprintf("Liste des %d triggers :triggered: :\n\n", len(trigs))
 		msg = msg + strings.Join(trigs, "\n")
 	}
 

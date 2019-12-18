@@ -119,7 +119,7 @@ func (i *mattermost) initClient() {
 func (i *mattermost) fetchMe() {
 	me, resp := i.Client().GetMe("")
 	if resp.Error != nil {
-		panic(resp.Error.DetailedError)
+		panic(resp.Error.ToJson())
 	}
 	i.me = *me
 }
