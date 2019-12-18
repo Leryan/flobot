@@ -24,11 +24,11 @@ type instruction struct {
 }
 
 type prog struct {
-	Name         string            `json:"Name"`
-	Owner        string            `json:"Owner"`
-	Instructions []instruction     `json:"Instructions"`
-	vars         map[string]string `json:"-"`
-	err          error             `json:"-"`
+	Name         string        `json:"Name"`
+	Owner        string        `json:"Owner"`
+	Instructions []instruction `json:"Instructions"`
+	vars         map[string]string
+	err          error
 }
 
 func (p *prog) Run() string {
@@ -142,9 +142,6 @@ func (p *proghandler) Handle(i instance.Instance, event *model.WebSocketEvent) e
 		return helpers.Reply(i, *post, "pas implementé")
 	} else if cmd[0] == "run" {
 		return helpers.Reply(i, *post, P.Run())
-	} else {
-		return helpers.Reply(i, *post, "nan ça existe pô ça")
 	}
-
-	return nil
+	return helpers.Reply(i, *post, "nan ça existe pô ça")
 }

@@ -20,7 +20,7 @@ func DisBonjour(i instance.Instance, event *model.WebSocketEvent) error {
 
 	if strings.HasPrefix(post.Message, "!disbonjour") {
 		i.Client().CreatePost(&model.Post{
-			Message:   "Bonjour :wave: ! Moi c’est FloBot. Je sais pas faire grand chose, mais le grand @flop y travaille dur dur dur :3\n\nEssaye `!perroquet coucou !`",
+			Message:   "Bonjour :wave: ! Moi c’est FloBot, je sais pas faire grand chose, mais tu peux essayer `!perroquet coucou` ou `!trigger list` !\n\nhttps://gitlab.com/Leryan/flobot",
 			ChannelId: post.ChannelId,
 		})
 	}
