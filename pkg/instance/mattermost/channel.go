@@ -2,6 +2,7 @@ package mattermost
 
 import (
 	"flobot/pkg/instance"
+	"strings"
 
 	"github.com/mattermost/mattermost-server/model"
 )
@@ -24,6 +25,19 @@ func (c *Channel) PostOrReply(to model.Post, msg string) (*model.Post, error) {
 func (c *Channel) Reply(to model.Post, msg string) (*model.Post, error) {
 	to.ChannelId = c.id
 	return Reply(c.i, c.client, to, msg)
+}
+
+func (c *Channel) React(to model.Post, reaction string) error {
+	me, err := c.i.Client().Me.Me()
+	if err != nil {
+		return err
+	}
+	_, resp := c.client.SaveReaction(&model.Reaction{
+		PostId:    to.Id,
+		EmojiName: strings.Replace(reaction, ":", "", -1),
+		UserId:    me.Id,
+	})
+	return ToError(resp)
 }
 
 func (c *Channel) Post(post model.Post) (*model.Post, error) {

@@ -4,7 +4,6 @@ import (
 	"flobot/pkg/instance"
 	"flobot/pkg/instance/mattermost"
 	"regexp"
-	"strings"
 
 	"github.com/mattermost/mattermost-server/model"
 )
@@ -27,12 +26,6 @@ func Security(i instance.Instance, event *model.WebSocketEvent) (bool, error) {
 
 	if post.UserId == me.Id {
 		return false, nil
-	}
-
-	msg := strings.ToLower(post.Message)
-	if strings.Contains(msg, "flop") || strings.Contains(msg, "quit") {
-		_, err := i.Client().Chan.Get(post.ChannelId).Reply(*post, "Me prends pas pour un dindon toi !")
-		return false, err
 	}
 
 	return true, nil

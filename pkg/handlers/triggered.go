@@ -15,8 +15,8 @@ import (
 	"github.com/mattermost/mattermost-server/model"
 )
 
-var triggerAdd = regexp.MustCompile("!trigger add ([a-zA-Z0-9_]+) (.+)")
-var triggerDel = regexp.MustCompile("!trigger del ([a-zA-Z0-9_]+)")
+var triggerAdd = regexp.MustCompile("^!trigger\\s+([a-z]+)\\s+\"([^\"]+)\"\\s+(.+)$")
+var triggerDel = regexp.MustCompile("^!trigger del \"([^\"]+)\"$")
 
 type triggered struct {
 	spaces sync.Map
@@ -30,9 +30,10 @@ type spaceTrigger struct {
 }
 
 type trigger struct {
-	Space   string `json:"space"`
-	Keyword string `json:"keyword"`
-	Value   string `json:"value"`
+	Space    string `json:"space"`
+	Keyword  string `json:"keyword"`
+	Value    string `json:"value"`
+	Reaction bool   `json:"reaction,omitempty"`
 }
 
 func (t *spaceTrigger) save(space string, trigg *trigger) error {
@@ -78,15 +79,30 @@ func (t *triggered) handleTriggerAdd(c instance.Channel, post model.Post) error 
 	}
 	subs := triggerAdd.FindStringSubmatch(post.Message)
 
-	if len(subs) != 3 {
+	if len(subs) != 4 {
 		return helpers.Discard(c.Reply(post, "lapô compri, lapô compri."))
 	}
 
-	if err := t.find(space).save(space, &trigger{Keyword: strings.ToLower(subs[1]), Value: subs[2], Space: space}); err != nil {
-		return helpers.Discard(c.Reply(post, "ah, ça a merdé : "+err.Error()))
+	trig := &trigger{
+		Keyword: strings.ToLower(subs[2]),
+		Value:   subs[3],
+		Space:   space,
 	}
 
-	return helpers.Discard(c.Reply(post, "c’est fait"))
+	if subs[1] == "reaction" {
+		trig.Reaction = true
+		trig.Value = subs[3]
+	} else if subs[1] == "text" {
+		trig.Reaction = false
+	} else {
+		return helpers.Discard(c.Reply(post, "nah spô comme ça : `!trigger text|reaction \"trigger\" value"))
+	}
+
+	if err := t.find(space).save(space, trig); err != nil {
+		return c.React(post, "x")
+	}
+
+	return c.React(post, "white_check_mark")
 }
 
 func (t *triggered) handleTriggerDel(c instance.Channel, post model.Post) error {
@@ -115,7 +131,7 @@ func (t *triggered) handleTriggerList(c instance.Channel, post model.Post) error
 		return true
 	})
 
-	msg := "Ah, ben yen a pas.\n\n * `!trigger add <nom> <ce que tu veux>`\n * `!trigger del <nom>`\n * `!trigger list`\n"
+	msg := "Ah, ben yen a pô."
 	if len(trigs) > 0 {
 		sort.Strings(trigs)
 		msg = fmt.Sprintf("Liste des %d triggers :triggered: :\n\n", len(trigs))
@@ -133,6 +149,7 @@ func (t *triggered) handleMessage(c instance.Channel, post model.Post) error {
 	msg := strings.ToLower(post.Message)
 
 	var fval string
+	var reaction bool
 
 	t.find(space).triggers.Range(func(key interface{}, value interface{}) bool {
 		c1 := fmt.Sprintf("%s ", key)
@@ -142,6 +159,7 @@ func (t *triggered) handleMessage(c instance.Channel, post model.Post) error {
 
 		if strings.Contains(msg, c2) || strings.HasPrefix(msg, c1) || strings.HasSuffix(msg, c3) || key.(string) == msg || msg == c4 {
 			fval = value.(trigger).Value
+			reaction = value.(trigger).Reaction
 			return false
 		}
 		return true
@@ -151,7 +169,10 @@ func (t *triggered) handleMessage(c instance.Channel, post model.Post) error {
 		return nil
 	}
 
-	return helpers.Discard(c.PostOrReply(post, fval))
+	if !reaction {
+		return helpers.Discard(c.PostOrReply(post, fval))
+	}
+	return c.React(post, fval)
 }
 
 func (t *triggered) Handler(i instance.Instance, event model.WebSocketEvent) error {
@@ -159,7 +180,7 @@ func (t *triggered) Handler(i instance.Instance, event model.WebSocketEvent) err
 		return nil
 	} else if post != nil {
 		c := i.Client().Chan.Get(post.ChannelId)
-		if strings.HasPrefix(post.Message, "!trigger add ") {
+		if triggerAdd.MatchString(post.Message) {
 			return t.handleTriggerAdd(c, *post)
 		} else if strings.HasPrefix(post.Message, "!trigger del") {
 			return t.handleTriggerDel(c, *post)

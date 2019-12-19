@@ -25,6 +25,7 @@ type Me interface {
 type Channel interface {
 	Post(post model.Post) (*model.Post, error)
 	Reply(to model.Post, msg string) (*model.Post, error)
+	React(to model.Post, reaction string) error
 	PostOrReply(to model.Post, msg string) (*model.Post, error)
 	Channel() (*model.Channel, error)
 	Space() (string, error)
