@@ -85,7 +85,7 @@ func (t *triggered) handleTriggerAdd(c instance.Channel, post model.Post) error 
 
 	trig := &trigger{
 		Keyword: strings.ToLower(subs[2]),
-		Value:   subs[3],
+		Value:   strings.TrimSpace(subs[3]),
 		Space:   space,
 	}
 
