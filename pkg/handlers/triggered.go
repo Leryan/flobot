@@ -155,9 +155,10 @@ func (t *triggered) handleMessage(c instance.Channel, post model.Post) error {
 		c1 := fmt.Sprintf("%s ", key)
 		c2 := fmt.Sprintf(" %s ", key)
 		c3 := fmt.Sprintf(" %s", key)
-		c4 := fmt.Sprintf(":%s:", key)
+		c4 := strings.TrimSpace(key.(string))
+		c5 := ":" + c4 + ":"
 
-		if strings.Contains(msg, c2) || strings.HasPrefix(msg, c1) || strings.HasSuffix(msg, c3) || key.(string) == msg || msg == c4 {
+		if strings.Contains(msg, c2) || strings.HasPrefix(msg, c1) || strings.HasSuffix(msg, c3) || key.(string) == msg || msg == c4 || msg == c5 {
 			fval = value.(trigger).Value
 			reaction = value.(trigger).Reaction
 			return false
