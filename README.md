@@ -1,7 +1,9 @@
-# FloBot2
+# FloBot
 
-## Update mattermost-server dependency
+## GoBot
 
-```
-go get github.com/mattermost/mattermost-server@<tagged-version-commit-hash>
-```
+Will be rewritten in Rust. See Robot.
+
+## Robot
+
+WIP.
