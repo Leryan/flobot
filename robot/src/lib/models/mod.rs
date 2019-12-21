@@ -1,14 +1,15 @@
 pub mod mattermost;
 
+#[derive(Clone, Debug)]
 pub enum Event {
     Post(Post),
-    Unsupported
 }
 
+#[derive(Clone, Debug)]
 pub struct Post {
-    channel_id: String,
-    message: String,
-    user_id: String,
-    root_id: String,
-    parent_id: String
+    pub channel_id: String,
+    pub message: String,
+    pub user_id: String,
+    pub root_id: String,
+    pub parent_id: String,
 }

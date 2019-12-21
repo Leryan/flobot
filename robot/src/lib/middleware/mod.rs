@@ -5,32 +5,17 @@ pub enum Error {
     Error(String),
 }
 
+type Result = std::result::Result<bool, Error>;
+
 pub trait Middleware {
-    fn process(&self, event: Event) -> Result<(), Error>;
+    fn process(&self, event: &mut Event) -> Result;
 }
 
-pub struct One {}
+pub struct Debug {}
 
-impl Middleware for One {
-    fn process(&self, event: Event) -> Result<(), Error> {
-        unimplemented!()
-    }
-}
-
-pub struct Two{
-    name: String
-}
-
-impl Two {
-    pub fn new(name: String) -> Self {
-        Two{
-            name: name
-        }
-    }
-}
-
-impl Middleware for Two {
-    fn process(&self, event: Event) -> Result<(), Error> {
-        unimplemented!()
+impl Middleware for Debug {
+    fn process(&self, event: &mut Event) -> Result {
+        println!("{:?}", event);
+        Ok(true)
     }
 }
