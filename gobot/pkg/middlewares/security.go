@@ -4,11 +4,13 @@ import (
 	"flobot/pkg/instance"
 	"flobot/pkg/instance/mattermost"
 	"regexp"
+	"strings"
 
 	"github.com/mattermost/mattermost-server/model"
 )
 
 var emmerde = regexp.MustCompile(".*flop.+quit.+")
+var null = " "
 
 func Security(i instance.Instance, event *model.WebSocketEvent) (bool, error) {
 	post, err := mattermost.DecodePost(*event)
@@ -25,6 +27,10 @@ func Security(i instance.Instance, event *model.WebSocketEvent) (bool, error) {
 	}
 
 	if post.UserId == me.Id {
+		return false, nil
+	}
+
+	if strings.Contains(post.Message, null) {
 		return false, nil
 	}
 
