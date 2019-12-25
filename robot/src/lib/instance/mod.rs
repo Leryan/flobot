@@ -1,6 +1,20 @@
 use crate::handlers::Handler;
 use crate::middleware::Middleware;
-use crate::models::{Event, Post};
+use crate::models::{Event, Post, StatusCode, StatusError};
+use crossbeam::crossbeam_channel::Receiver;
+
+#[derive(Debug)]
+pub enum ErrorCode {
+    Unknown,
+    Middleware,
+    App,
+}
+
+#[derive(Debug)]
+pub struct Error {
+    code: ErrorCode,
+    message: String,
+}
 
 pub struct Instance {
     middlewares: Vec<Box<dyn Middleware>>,
@@ -25,29 +39,86 @@ impl Instance {
         self
     }
 
-    pub fn process(&self, event: Event) {
+    fn process(&self, event: Event) -> Result<(), Error> {
         let event = &mut event.clone();
 
         for middleware in self.middlewares.iter() {
             match middleware.process(event) {
                 Ok(cont) => match cont {
-                    false => return,
-                    true => {}
+                    false => Ok(()),
+                    true => continue,
                 },
-                Err(_) => return,
-            }
+                Err(_e) => Err(Error {
+                    code: ErrorCode::Middleware,
+                    message: String::from("error message is not implemented"),
+                }),
+            }?;
         }
 
         let event = event.clone();
 
         match event {
-            Event::Post(post) => self.process_event(post),
+            Event::Post(post) => {
+                self.post_handlers
+                    .iter()
+                    .for_each(|handler| handler.handle(post.clone()));
+                Ok(())
+            }
+            Event::Unsupported(unsupported) => {
+                println!("unsupported event: {:?}", unsupported);
+                Ok(())
+            }
+            Event::Status(apperror) => match apperror.code {
+                StatusCode::OK => Ok(()),
+                StatusCode::Error => Err(Error {
+                    code: ErrorCode::App,
+                    message: apperror
+                        .error
+                        .unwrap_or(StatusError {
+                            message: "none".to_string(),
+                            detailed_error: "".to_string(),
+                            request_id: None,
+                            status_code: 0,
+                        })
+                        .message,
+                }),
+                StatusCode::Unsupported => {
+                    println!("unsupported: {:?}", apperror);
+                    Ok(())
+                }
+                StatusCode::Unknown => Err(Error {
+                    code: ErrorCode::Unknown,
+                    message: apperror
+                        .error
+                        .unwrap_or(StatusError {
+                            message: "none".to_string(),
+                            detailed_error: "".to_string(),
+                            request_id: None,
+                            status_code: 0,
+                        })
+                        .message,
+                }),
+            },
         }
     }
 
-    fn process_event(&self, post: Post) {
-        for handler in self.post_handlers.iter() {
-            handler.handle(post.clone());
+    pub fn run(&self, receiver: Receiver<Event>) {
+        loop {
+            match receiver.recv() {
+                Ok(e) => match self.process(e) {
+                    Err(e) => {
+                        println!("process error: {:?}", e);
+                        return;
+                    }
+                    Ok(_) => {
+                        continue;
+                    }
+                },
+                Err(e) => {
+                    println!("recv error: {:?}", e);
+                    return;
+                }
+            }
         }
     }
 }
