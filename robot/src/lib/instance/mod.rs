@@ -39,24 +39,28 @@ impl Instance {
         self
     }
 
-    fn process(&self, event: Event) -> Result<(), Error> {
+    fn process_middlewares(&self, event: Event) -> Option<Result<Event, Error>> {
         let event = &mut event.clone();
 
         for middleware in self.middlewares.iter() {
             match middleware.process(event) {
                 Ok(cont) => match cont {
-                    false => Ok(()),
+                    false => return None,
                     true => continue,
                 },
-                Err(_e) => Err(Error {
-                    code: ErrorCode::Middleware,
-                    message: String::from("error message is not implemented"),
-                }),
-            }?;
+                Err(e) => {
+                    return Some(Err(Error {
+                        code: ErrorCode::Middleware,
+                        message: e,
+                    }))
+                }
+            };
         }
 
-        let event = event.clone();
+        Some(Ok(event.clone()))
+    }
 
+    fn process_event(&self, event: Event) -> Result<(), Error> {
         match event {
             Event::Post(post) => {
                 self.post_handlers
@@ -83,6 +87,16 @@ impl Instance {
                     message: apperror.error.unwrap_or(StatusError::new_none()).message,
                 }),
             },
+        }
+    }
+
+    fn process(&self, event: Event) -> Result<(), Error> {
+        match self.process_middlewares(event) {
+            Some(res) => match res {
+                Ok(event) => self.process_event(event),
+                Err(e) => Err(e),
+            },
+            None => Ok(()),
         }
     }
 

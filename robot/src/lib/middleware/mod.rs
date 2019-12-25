@@ -1,12 +1,6 @@
 use crate::models::Event;
 
-#[derive(Debug)]
-pub enum Error {
-    Stop,
-    Error(String),
-}
-
-type Result = std::result::Result<bool, Error>;
+type Result = std::result::Result<bool, String>;
 
 pub trait Middleware {
     fn process(&self, event: &mut Event) -> Result;
