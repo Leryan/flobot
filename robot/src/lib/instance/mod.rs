@@ -39,25 +39,25 @@ impl Instance {
         self
     }
 
-    fn process_middlewares(&self, event: Event) -> Option<Result<Event, Error>> {
+    fn process_middlewares(&self, event: Event) -> Result<Option<Event>, Error> {
         let event = &mut event.clone();
 
         for middleware in self.middlewares.iter() {
             match middleware.process(event) {
                 Ok(cont) => match cont {
-                    false => return None,
+                    false => return Ok(None),
                     true => continue,
                 },
                 Err(e) => {
-                    return Some(Err(Error {
+                    return Err(Error {
                         code: ErrorCode::Middleware,
                         message: e,
-                    }))
+                    })
                 }
             };
         }
 
-        Some(Ok(event.clone()))
+        Ok(Some(event.clone()))
     }
 
     fn process_event(&self, event: Event) -> Result<(), Error> {
@@ -73,7 +73,10 @@ impl Instance {
                 Ok(())
             }
             Event::Status(apperror) => match apperror.code {
-                StatusCode::OK => Ok(()),
+                StatusCode::OK => Err(Error {
+                    code: ErrorCode::App,
+                    message: "".to_string(),
+                }),
                 StatusCode::Error => Err(Error {
                     code: ErrorCode::App,
                     message: apperror.error.unwrap_or(StatusError::new_none()).message,
@@ -92,11 +95,11 @@ impl Instance {
 
     fn process(&self, event: Event) -> Result<(), Error> {
         match self.process_middlewares(event) {
-            Some(res) => match res {
-                Ok(event) => self.process_event(event),
-                Err(e) => Err(e),
+            Ok(res) => match res {
+                Some(event) => self.process_event(event),
+                None => Ok(()),
             },
-            None => Ok(()),
+            Err(e) => Err(e),
         }
     }
 
