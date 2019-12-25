@@ -37,3 +37,14 @@ pub struct StatusError {
     pub request_id: Option<String>,
     pub status_code: i32,
 }
+
+impl StatusError {
+    pub fn new_none() -> Self {
+        Self {
+            message: "none".to_string(),
+            detailed_error: "".to_string(),
+            request_id: None,
+            status_code: 0,
+        }
+    }
+}

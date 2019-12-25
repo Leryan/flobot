@@ -72,15 +72,7 @@ impl Instance {
                 StatusCode::OK => Ok(()),
                 StatusCode::Error => Err(Error {
                     code: ErrorCode::App,
-                    message: apperror
-                        .error
-                        .unwrap_or(StatusError {
-                            message: "none".to_string(),
-                            detailed_error: "".to_string(),
-                            request_id: None,
-                            status_code: 0,
-                        })
-                        .message,
+                    message: apperror.error.unwrap_or(StatusError::new_none()).message,
                 }),
                 StatusCode::Unsupported => {
                     println!("unsupported: {:?}", apperror);
@@ -88,15 +80,7 @@ impl Instance {
                 }
                 StatusCode::Unknown => Err(Error {
                     code: ErrorCode::Unknown,
-                    message: apperror
-                        .error
-                        .unwrap_or(StatusError {
-                            message: "none".to_string(),
-                            detailed_error: "".to_string(),
-                            request_id: None,
-                            status_code: 0,
-                        })
-                        .message,
+                    message: apperror.error.unwrap_or(StatusError::new_none()).message,
                 }),
             },
         }
