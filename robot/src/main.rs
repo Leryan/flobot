@@ -29,13 +29,14 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         let cfg = cfg.clone();
         let wg = wg.clone();
         thread::spawn(move || {
-            println!("launch instance thread {:?}/{:?}", i+1, cfg.threads);
+            println!("launch instance thread {:?}/{:?}", i + 1, cfg.threads);
             let client = Mattermost::new(cfg);
             Instance::new(&client)
                 .add_middleware(Box::new(middleware::Debug::new("middleware 1")))
                 .add_post_handler(Box::new(handlers::Debug::new("post handler")))
                 .run(mrecv);
             drop(wg);
+            println!("thread {:?} stopped", i + 1);
         });
     }
 
