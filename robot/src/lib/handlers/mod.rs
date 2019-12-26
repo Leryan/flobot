@@ -1,8 +1,9 @@
+use crate::client::Client;
 use crate::models::Post;
 
-pub trait Handler {
+pub trait Handler<C> {
     type Data;
-    fn handle(&self, data: Self::Data);
+    fn handle(&self, data: Self::Data, client: &C);
 }
 
 pub struct Debug {
@@ -17,10 +18,10 @@ impl Debug {
     }
 }
 
-impl Handler for Debug {
+impl<C: Client> Handler<C> for Debug {
     type Data = Post;
 
-    fn handle(&self, data: Post) {
+    fn handle(&self, data: Post, _client: &C) {
         println!("handler {:?} -> {:?}", self.name, data)
     }
 }

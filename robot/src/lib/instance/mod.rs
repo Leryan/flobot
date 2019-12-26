@@ -1,3 +1,4 @@
+use crate::client::Client;
 use crate::handlers::Handler;
 use crate::middleware::Middleware;
 use crate::models::{Event, Post, StatusCode, StatusError};
@@ -16,25 +17,27 @@ pub struct Error {
     message: String,
 }
 
-pub struct Instance {
-    middlewares: Vec<Box<dyn Middleware>>,
-    post_handlers: Vec<Box<dyn Handler<Data = Post>>>,
+pub struct Instance<'c, C: Client> {
+    middlewares: Vec<Box<dyn Middleware<C>>>,
+    post_handlers: Vec<Box<dyn Handler<C, Data = Post>>>,
+    client: &'c C,
 }
 
-impl Instance {
-    pub fn new() -> Self {
+impl<'c, C: Client> Instance<'c, C> {
+    pub fn new(client: &'c C) -> Self {
         Instance {
             middlewares: Vec::new(),
             post_handlers: Vec::new(),
+            client: client,
         }
     }
 
-    pub fn add_middleware(&mut self, middleware: Box<dyn Middleware>) -> &mut Self {
+    pub fn add_middleware(&mut self, middleware: Box<dyn Middleware<C>>) -> &mut Self {
         self.middlewares.push(middleware);
         self
     }
 
-    pub fn add_post_handler(&mut self, handler: Box<dyn Handler<Data = Post>>) -> &mut Self {
+    pub fn add_post_handler(&mut self, handler: Box<dyn Handler<C, Data = Post>>) -> &mut Self {
         self.post_handlers.push(handler);
         self
     }
@@ -43,7 +46,7 @@ impl Instance {
         let event = &mut event.clone();
 
         for middleware in self.middlewares.iter() {
-            match middleware.process(event) {
+            match middleware.process(event, self.client) {
                 Ok(cont) => match cont {
                     false => return Ok(None),
                     true => continue,
@@ -65,7 +68,7 @@ impl Instance {
             Event::Post(post) => {
                 self.post_handlers
                     .iter()
-                    .for_each(|handler| handler.handle(post.clone()));
+                    .for_each(|handler| handler.handle(post.clone(), self.client));
                 Ok(())
             }
             Event::Unsupported(unsupported) => {

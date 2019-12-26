@@ -1,9 +1,10 @@
+use crate::client::Client;
 use crate::models::Event;
 
 type Result = std::result::Result<bool, String>;
 
-pub trait Middleware {
-    fn process(&self, event: &mut Event) -> Result;
+pub trait Middleware<C: Client> {
+    fn process(&self, event: &mut Event, client: &C) -> Result;
 }
 
 pub struct Debug {
@@ -18,8 +19,8 @@ impl Debug {
     }
 }
 
-impl Middleware for Debug {
-    fn process(&self, event: &mut Event) -> Result {
+impl<C: Client> Middleware<C> for Debug {
+    fn process(&self, event: &mut Event, _client: &C) -> Result {
         println!("middleware {:?} -> {:?}", self.name, event);
         Ok(true)
     }

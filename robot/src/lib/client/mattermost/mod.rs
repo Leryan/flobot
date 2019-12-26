@@ -1,7 +1,6 @@
-use crate::client::Client;
+use crate::client::*;
 use crate::conf::Conf;
 use crate::models::mattermost::MetaEvent;
-use crate::models::Event;
 use crossbeam::crossbeam_channel::Sender;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
@@ -56,7 +55,7 @@ impl Mattermost {
     }
 }
 
-impl Client for Mattermost {
+impl EventClient for Mattermost {
     fn listen(&self, sender: Sender<Event>) {
         let mut url = self.cfg.ws_url.clone();
         url.push_str("/api/v4/websocket");
@@ -67,5 +66,15 @@ impl Client for Mattermost {
             seq: 0,
         })
         .unwrap()
+    }
+
+    fn client(&self) -> Box<dyn Client> {
+        unimplemented!()
+    }
+}
+
+impl Client for Mattermost {
+    fn me(&self) -> Me {
+        unimplemented!()
     }
 }

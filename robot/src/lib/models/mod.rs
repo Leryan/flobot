@@ -38,6 +38,10 @@ pub struct StatusError {
     pub status_code: i32,
 }
 
+pub struct Me {
+    pub id: String,
+}
+
 impl StatusError {
     pub fn new_none() -> Self {
         Self {
