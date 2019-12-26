@@ -5,6 +5,7 @@ pub struct Conf {
     pub api_url: String,
     pub ws_url: String,
     pub token: String,
+    pub threads: u64,
 }
 
 impl Conf {
@@ -15,6 +16,10 @@ impl Conf {
             api_url: std::env::var("BOT_API_URL")?,
             ws_url: std::env::var("BOT_WS_URL")?,
             token: std::env::var("BOT_TOKEN")?,
+            threads: std::env::var("BOT_THREADS")
+                .unwrap_or(String::from("4"))
+                .parse()
+                .unwrap_or(4),
         })
     }
 }
