@@ -24,12 +24,12 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         });
     }
 
-    for _i in 0..cfg.threads {
+    for i in 0..cfg.threads {
         let mrecv = receiver.clone();
         let cfg = cfg.clone();
         let wg = wg.clone();
         thread::spawn(move || {
-            println!("launch instance thread");
+            println!("launch instance thread {:?}/{:?}", i+1, cfg.threads);
             let client = Mattermost::new(cfg);
             Instance::new(&client)
                 .add_middleware(Box::new(middleware::Debug::new("middleware 1")))
