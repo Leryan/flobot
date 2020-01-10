@@ -46,7 +46,6 @@ func main() {
 				inst.AddMiddleware(middlewares.Security).
 					AddHandler(handlers.Console).
 					AddHandler(handlers.Parrot).
-					AddHandler(handlers.Avis).
 					//AddHandler(handlers.NewWerewolf().Handle).
 					AddHandler(handlers.DisBonjour).
 					AddHandler(handlers.EmmerdeMaison).
