@@ -3,3 +3,5 @@
 /botdb
 /**/testdata-*
 *.iml
+/target
+**/*.rs.bk
