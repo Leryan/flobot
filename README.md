@@ -7,7 +7,7 @@
 ```
 # Bootstrap dev from scratch
 
-apt install libsqlite3-dev libssl-dev sqlite3
+apt install pkg-config libsqlite3-dev libssl-dev sqlite3
 
 cargo install diesel_cli --no-default-features --features sqlite
 
