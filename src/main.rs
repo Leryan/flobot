@@ -1,15 +1,26 @@
 use crossbeam::crossbeam_channel::unbounded;
 use crossbeam::sync::WaitGroup;
-use robot::client::mattermost::Mattermost;
-use robot::client::*;
-use robot::conf::Conf;
-use robot::handlers;
-use robot::instance::Instance;
-use robot::middleware;
+use diesel::Connection;
+use diesel::SqliteConnection;
+use diesel_migrations;
+use dotenv::dotenv;
+use flobot::client::mattermost::Mattermost;
+use flobot::client::*;
+use flobot::conf::Conf;
+use flobot::handlers;
+use flobot::instance::Instance;
+use flobot::middleware;
+use std::env;
 use std::thread;
 
+fn db_conn() -> SqliteConnection {
+    let dburl = env::var("DATABASE_URL").expect("DATABASE_URL env set");
+    return SqliteConnection::establish(&dburl).expect("db connection");
+}
+
 fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let cfg = Conf::new()?;
+    dotenv().ok();
+    let cfg = Conf::new().expect("cfg err");
 
     let (sender, receiver) = unbounded();
     let wg = WaitGroup::new();
@@ -24,22 +35,17 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         });
     }
 
-    for i in 0..cfg.threads {
-        let mrecv = receiver.clone();
-        let cfg = cfg.clone();
-        let wg = wg.clone();
-        thread::spawn(move || {
-            println!("launch instance thread {:?}/{:?}", i + 1, cfg.threads);
-            let client = Mattermost::new(cfg);
-            Instance::new(&client)
-                .add_middleware(Box::new(middleware::Debug::new("middleware 1")))
-                .add_post_handler(Box::new(handlers::Debug::new("post handler")))
-                .run(mrecv);
-            drop(wg);
-            println!("thread {:?} stopped", i + 1);
-        });
-    }
+    println!("run db migrations");
+    diesel_migrations::run_pending_migrations(&db_conn())?;
 
+    println!("launch bot!");
+    Instance::new(Mattermost::new(cfg))
+        //.add_middleware(Box::new(middleware::Debug::new("debug")))
+        .add_middleware(Box::new(middleware::IgnoreSelf::new()))
+        .add_post_handler(Box::new(handlers::Trigger::new(db_conn())))
+        .run(receiver.clone())?;
+
+    println!("waiting for listener to stop");
     wg.wait();
 
     Ok(())

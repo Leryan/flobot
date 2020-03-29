@@ -1,19 +1,28 @@
+pub mod db;
 pub mod mattermost;
 
 #[derive(Clone, Debug)]
-pub enum Event {
-    Post(Post),
-    Status(Status),
+pub enum GenericEvent {
+    Hello(GenericHello),
+    Post(GenericPost),
+    Status(GenericStatus),
     Unsupported(String),
 }
 
 #[derive(Clone, Debug)]
-pub struct Post {
+pub struct GenericHello {
+    pub server_string: String,
+    pub my_user_id: String,
+}
+
+#[derive(Clone, Debug)]
+pub struct GenericPost {
     pub channel_id: String,
     pub message: String,
     pub user_id: String,
     pub root_id: String,
     pub parent_id: String,
+    pub id: String,
 }
 
 #[derive(Clone, Debug)]
@@ -25,7 +34,7 @@ pub enum StatusCode {
 }
 
 #[derive(Clone, Debug)]
-pub struct Status {
+pub struct GenericStatus {
     pub code: StatusCode,
     pub error: Option<StatusError>,
 }

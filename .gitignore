@@ -5,3 +5,5 @@
 *.iml
 /target
 **/*.rs.bk
+flobot.db
+/run-local.sh
