@@ -3,24 +3,23 @@ use crossbeam::sync::WaitGroup;
 use diesel::Connection;
 use diesel::SqliteConnection;
 use diesel_migrations;
-use dotenv::dotenv;
+use dotenv;
 use flobot::client::mattermost::Mattermost;
 use flobot::client::*;
 use flobot::conf::Conf;
 use flobot::handlers;
 use flobot::instance::Instance;
 use flobot::middleware;
-use std::env;
 use std::thread;
 
-fn db_conn() -> SqliteConnection {
-    let dburl = env::var("DATABASE_URL").expect("DATABASE_URL env set");
-    return SqliteConnection::establish(&dburl).expect("db connection");
+fn db_conn(db_url: &str) -> SqliteConnection {
+    return SqliteConnection::establish(db_url).expect("db connection");
 }
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
-    dotenv().ok();
+    dotenv::from_filename("flobot.env").ok();
     let cfg = Conf::new().expect("cfg err");
+    let db_url = cfg.db_url.as_str();
 
     let (sender, receiver) = unbounded();
     let wg = WaitGroup::new();
@@ -36,13 +35,13 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     }
 
     println!("run db migrations");
-    diesel_migrations::run_pending_migrations(&db_conn())?;
+    diesel_migrations::run_pending_migrations(&db_conn(db_url))?;
 
     println!("launch bot!");
-    Instance::new(Mattermost::new(cfg))
+    Instance::new(Mattermost::new(cfg.clone()))
         //.add_middleware(Box::new(middleware::Debug::new("debug")))
         .add_middleware(Box::new(middleware::IgnoreSelf::new()))
-        .add_post_handler(Box::new(handlers::Trigger::new(db_conn())))
+        .add_post_handler(Box::new(handlers::Trigger::new(db_conn(db_url))))
         .run(receiver.clone())?;
 
     println!("waiting for listener to stop");
