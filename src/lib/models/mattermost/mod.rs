@@ -1,10 +1,31 @@
-use crate::models::Event as GenericEvent;
-use crate::models::Post as GenericPost;
-use crate::models::Status as GenericStatus;
+use crate::models::GenericPost;
+use crate::models::GenericStatus;
 use crate::models::StatusCode;
 use crate::models::StatusError as GenericStatusError;
+use crate::models::{GenericEvent, GenericHello};
 use serde::{Deserialize, Serialize};
 use std::convert::Into;
+
+#[derive(Deserialize, Serialize)]
+pub struct Hello {
+    server_version: String,
+}
+
+#[derive(Deserialize, Serialize)]
+pub struct Post {
+    id: String,
+    message: String,
+    create_at: u64,
+    update_at: u64,
+    edit_at: u64,
+    delete_at: u64,
+    is_pinned: bool,
+    user_id: String,
+    channel_id: String,
+    root_id: String,
+    parent_id: String,
+    original_id: String,
+}
 
 #[derive(Deserialize, Serialize)]
 pub struct Posted {
@@ -35,12 +56,14 @@ pub struct StatusDetails {
 impl Into<GenericPost> for Posted {
     fn into(self) -> GenericPost {
         // FIXME: must still decode self.post
+        let post: Post = serde_json::from_str(self.post.as_str()).unwrap();
         GenericPost {
-            user_id: self.sender_name,
-            root_id: self.post.clone(),
-            parent_id: "".to_string(),
-            message: self.post.clone(),
-            channel_id: self.channel_name,
+            user_id: post.user_id.clone(),
+            root_id: post.root_id.clone(),
+            parent_id: post.parent_id.clone(),
+            message: post.message.clone(),
+            channel_id: post.channel_id.clone(),
+            id: post.id.clone(),
         }
     }
 }
@@ -83,6 +106,15 @@ impl Into<GenericStatus> for Status {
 #[serde(untagged)]
 pub enum EventData {
     Posted(Posted),
+    Hello(Hello),
+}
+
+#[derive(Serialize, Deserialize)]
+pub struct Broadcast {
+    channel_id: String,
+    omit_users: Option<String>,
+    team_id: String,
+    user_id: String,
 }
 
 #[derive(Serialize, Deserialize)]
@@ -90,6 +122,7 @@ pub struct Event {
     #[serde(rename(serialize = "event", deserialize = "event"))]
     type_: String,
     data: EventData,
+    broadcast: Broadcast,
 }
 
 #[derive(Serialize, Deserialize)]
@@ -104,6 +137,10 @@ impl Into<GenericEvent> for Event {
     fn into(self) -> GenericEvent {
         match self.data {
             EventData::Posted(posted) => GenericEvent::Post(posted.into()),
+            EventData::Hello(hello) => GenericEvent::Hello(GenericHello {
+                my_user_id: self.broadcast.user_id.clone(),
+                server_string: hello.server_version.clone(),
+            }),
         }
     }
 }
@@ -146,6 +183,7 @@ mod tests {
                 assert_eq!(event.channel_type, "O");
                 assert_ne!(event.post, "");
             }
+            _ => panic!("event type not tested"),
         }
     }
 

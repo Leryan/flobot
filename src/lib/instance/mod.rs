@@ -1,7 +1,7 @@
 use crate::client::Client;
 use crate::handlers::Handler;
 use crate::middleware::Middleware;
-use crate::models::{Event, Post, StatusCode, StatusError};
+use crate::models::{GenericEvent, GenericPost, StatusCode, StatusError};
 use crossbeam::crossbeam_channel::Receiver;
 
 #[derive(Debug)]
@@ -17,14 +17,14 @@ pub struct Error {
     message: String,
 }
 
-pub struct Instance<'c, C: Client> {
+pub struct Instance<C: Client> {
     middlewares: Vec<Box<dyn Middleware<C>>>,
-    post_handlers: Vec<Box<dyn Handler<C, Data = Post>>>,
-    client: &'c C,
+    post_handlers: Vec<Box<dyn Handler<C, Data = GenericPost>>>,
+    client: C,
 }
 
-impl<'c, C: Client> Instance<'c, C> {
-    pub fn new(client: &'c C) -> Self {
+impl<C: Client> Instance<C> {
+    pub fn new(client: C) -> Self {
         Instance {
             middlewares: Vec::new(),
             post_handlers: Vec::new(),
@@ -37,16 +37,19 @@ impl<'c, C: Client> Instance<'c, C> {
         self
     }
 
-    pub fn add_post_handler(&mut self, handler: Box<dyn Handler<C, Data = Post>>) -> &mut Self {
+    pub fn add_post_handler(
+        &mut self,
+        handler: Box<dyn Handler<C, Data = GenericPost>>,
+    ) -> &mut Self {
         self.post_handlers.push(handler);
         self
     }
 
-    fn process_middlewares(&self, event: Event) -> Result<Option<Event>, Error> {
+    fn process_middlewares(&mut self, event: GenericEvent) -> Result<Option<GenericEvent>, Error> {
         let event = &mut event.clone();
 
-        for middleware in self.middlewares.iter() {
-            match middleware.process(event, self.client) {
+        for middleware in self.middlewares.iter_mut() {
+            match middleware.process(event, &mut self.client) {
                 Ok(cont) => match cont {
                     false => return Ok(None),
                     true => continue,
@@ -63,40 +66,41 @@ impl<'c, C: Client> Instance<'c, C> {
         Ok(Some(event.clone()))
     }
 
-    fn process_event(&self, event: Event) -> Result<(), Error> {
+    fn process_event(&self, event: GenericEvent) -> Result<(), Error> {
         match event {
-            Event::Post(post) => {
+            GenericEvent::Post(post) => {
                 self.post_handlers
                     .iter()
-                    .for_each(|handler| handler.handle(post.clone(), self.client));
+                    .for_each(|handler| handler.handle(post.clone(), &self.client));
                 Ok(())
             }
-            Event::Unsupported(unsupported) => {
+            GenericEvent::Unsupported(unsupported) => {
                 println!("unsupported event: {:?}", unsupported);
                 Ok(())
             }
-            Event::Status(apperror) => match apperror.code {
-                StatusCode::OK => Err(Error {
-                    code: ErrorCode::App,
-                    message: "".to_string(),
-                }),
+            GenericEvent::Hello(hello) => {
+                println!("hello server {:?}", hello.server_string);
+                Ok(())
+            }
+            GenericEvent::Status(status) => match status.code {
+                StatusCode::OK => Ok(()),
                 StatusCode::Error => Err(Error {
                     code: ErrorCode::App,
-                    message: apperror.error.unwrap_or(StatusError::new_none()).message,
+                    message: status.error.unwrap_or(StatusError::new_none()).message,
                 }),
                 StatusCode::Unsupported => {
-                    println!("unsupported: {:?}", apperror);
+                    println!("unsupported: {:?}", status);
                     Ok(())
                 }
                 StatusCode::Unknown => Err(Error {
                     code: ErrorCode::Unknown,
-                    message: apperror.error.unwrap_or(StatusError::new_none()).message,
+                    message: status.error.unwrap_or(StatusError::new_none()).message,
                 }),
             },
         }
     }
 
-    fn process(&self, event: Event) -> Result<(), Error> {
+    fn process(&mut self, event: GenericEvent) -> Result<(), Error> {
         match self.process_middlewares(event) {
             Ok(res) => match res {
                 Some(event) => self.process_event(event),
@@ -106,21 +110,19 @@ impl<'c, C: Client> Instance<'c, C> {
         }
     }
 
-    pub fn run(&self, receiver: Receiver<Event>) {
+    pub fn run(&mut self, receiver: Receiver<GenericEvent>) -> Result<(), String> {
         loop {
             match receiver.recv() {
                 Ok(e) => match self.process(e) {
                     Err(e) => {
-                        println!("process error: {:?}", e);
-                        return;
+                        return Err(String::from(format!("processing error: {:?}", e)));
                     }
                     Ok(_) => {
                         continue;
                     }
                 },
                 Err(e) => {
-                    println!("recv error: {:?}", e);
-                    return;
+                    return Err(String::from(format!("recv error: {:?}", e.to_string())));
                 }
             }
         }
