@@ -61,7 +61,15 @@ impl<C: Client> Handler<C> for Trigger {
         if !message.starts_with("!trigger ") {
             let res = trigger.load::<db::Trigger>(&self.dbpool).unwrap_or(vec![]);
             for t in res {
-                if message.contains(t.triggered_by.as_str()) {
+                let tb = t.triggered_by.as_str();
+                let tb_word = format!(" {} ", tb);
+                let tb_start = format!("{} ", tb);
+                let tb_end = format!(" {}", tb);
+                if message.contains(tb_word.as_str())
+                    || message.starts_with(tb_start.as_str())
+                    || message.ends_with(tb_end.as_str())
+                    || message == t.triggered_by.as_str()
+                {
                     if t.text_.is_some() {
                         client.send_reply(data.clone(), t.text_.unwrap().as_str());
                         break;
