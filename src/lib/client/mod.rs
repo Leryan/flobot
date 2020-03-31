@@ -14,5 +14,6 @@ pub trait Client {
     fn send_post(&self, post: GenericPost);
     fn send_reaction(&self, post: GenericPost, reaction: &str);
     fn send_reply(&self, post: GenericPost, message: &str);
+    fn send_message(&self, from: GenericPost, message: &str);
     fn send_trigger_list(&self, triggers: Vec<Trigger>, from: GenericPost);
 }

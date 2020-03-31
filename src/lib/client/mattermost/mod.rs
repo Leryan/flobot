@@ -128,6 +128,7 @@ impl Client for Mattermost {
     fn set_my_user_id(&mut self, user_id: &str) {
         self.user_id = String::from(user_id)
     }
+
     fn send_post(&self, post: GenericPost) {
         let c = reqwest::blocking::Client::new();
         let mmpost = Post {
@@ -148,6 +149,11 @@ impl Client for Mattermost {
                 .json(&mmpost)
                 .send(),
         );
+    }
+
+    fn send_message(&self, mut post: GenericPost, message: &str) {
+        post.message = message.to_string();
+        self.send_post(post)
     }
 
     fn send_reaction(&self, post: GenericPost, reaction: &str) {
@@ -189,8 +195,10 @@ impl Client for Mattermost {
 
     fn send_trigger_list(&self, triggers: Vec<Trigger>, from: GenericPost) {
         let mut l = String::from(format!("Ya {:?} triggers.\n", triggers.len()));
+        let mut count = 0;
 
         for trigger in triggers {
+            count += 1;
             if trigger.emoji.is_some() {
                 l.push_str(
                     format!(
@@ -210,10 +218,16 @@ impl Client for Mattermost {
                     .as_str(),
                 );
             }
+
+            if count == 20 {
+                self.send_message(from.clone(), l.as_str());
+                count = 0;
+                l = String::new();
+            }
         }
 
-        let mut from = from.clone();
-        from.message = l;
-        self.send_post(from);
+        if count > 0 {
+            self.send_message(from, l.as_str());
+        }
     }
 }
