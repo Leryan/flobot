@@ -2,7 +2,8 @@ use crate::client::Client;
 use crate::handlers::Handler;
 use crate::middleware::Middleware;
 use crate::models::{GenericEvent, GenericPost, StatusCode, StatusError};
-use crossbeam::crossbeam_channel::Receiver;
+use crossbeam::crossbeam_channel::{Receiver, RecvTimeoutError};
+use std::time::Duration;
 
 #[derive(Debug)]
 pub enum ErrorCode {
@@ -112,7 +113,7 @@ impl<C: Client> Instance<C> {
 
     pub fn run(&mut self, receiver: Receiver<GenericEvent>) -> Result<(), String> {
         loop {
-            match receiver.recv() {
+            match receiver.recv_timeout(Duration::from_secs(5)) {
                 Ok(e) => match self.process(e) {
                     Err(e) => {
                         return Err(String::from(format!("processing error: {:?}", e)));
@@ -121,9 +122,12 @@ impl<C: Client> Instance<C> {
                         continue;
                     }
                 },
-                Err(e) => {
-                    return Err(String::from(format!("recv error: {:?}", e.to_string())));
-                }
+                Err(rte) => match rte {
+                    RecvTimeoutError::Timeout => {}
+                    RecvTimeoutError::Disconnected => {
+                        return Err(String::from("receiving channel disconnected"));
+                    }
+                },
             }
         }
     }
