@@ -7,6 +7,7 @@ pub enum GenericEvent {
     Post(GenericPost),
     Status(GenericStatus),
     Unsupported(String),
+    PostEdited(GenericPostEdited),
 }
 
 #[derive(Clone, Debug)]
@@ -24,6 +25,36 @@ pub struct GenericPost {
     pub parent_id: String,
     pub id: String,
     pub team_id: String,
+}
+
+#[derive(Clone, Debug)]
+pub struct GenericPostEdited {
+    pub channel_id: String,
+    pub message: String,
+    pub user_id: String,
+    pub root_id: String,
+    pub parent_id: String,
+    pub id: String,
+}
+
+impl GenericPost {
+    pub fn new() -> Self {
+        Self {
+            channel_id: "".to_string(),
+            message: "".to_string(),
+            user_id: "".to_string(),
+            root_id: "".to_string(),
+            parent_id: "".to_string(),
+            id: "".to_string(),
+            team_id: "".to_string(),
+        }
+    }
+
+    pub fn with_message(message: &str) -> Self {
+        let mut s = Self::new();
+        s.message = message.to_string();
+        s
+    }
 }
 
 #[derive(Clone, Debug)]

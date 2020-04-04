@@ -14,6 +14,12 @@ struct Auth {
     token: String,
 }
 
+#[derive(Serialize)]
+struct PostEdit<'a> {
+    message: Option<&'a str>,
+    file_ids: Option<Vec<&'a str>>,
+}
+
 struct MattermostWS {
     out: WSSender,
     send: Sender<GenericEvent>,
@@ -229,5 +235,39 @@ impl Client for Mattermost {
         if count > 0 {
             self.send_message(from, l.as_str());
         }
+    }
+
+    fn notify_startup(&self) {
+        let mut post = GenericPost::with_message("jsuilà");
+        post.channel_id = self.cfg.debug_channel.clone();
+        self.send_post(post)
+    }
+
+    fn edit_post_message(&self, post_id: &str, message: &str) {
+        let edit = PostEdit {
+            message: Some(message),
+            file_ids: None,
+        };
+
+        let c = reqwest::blocking::Client::new();
+        self.response_result(
+            c.put(
+                self.url(format!("/posts/{}/patch", post_id).as_str())
+                    .as_str(),
+            )
+            .bearer_auth(self.cfg.token.clone())
+            .json(&edit)
+            .send(),
+        );
+    }
+
+    fn unimplemented(&self, post: GenericPost) {
+        self.send_reply(post, "spô encore prêt chéri·e :3 :trollface:")
+    }
+
+    fn debug(&self, message: &str) {
+        let mut post = GenericPost::with_message(message);
+        post.channel_id = self.cfg.debug_channel.clone();
+        self.send_post(post)
     }
 }

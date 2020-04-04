@@ -1,4 +1,15 @@
 table! {
+    edits (id) {
+        id -> Integer,
+        edit -> Text,
+        team_id -> Nullable<Text>,
+        user_id -> Nullable<Text>,
+        replace_with_text -> Nullable<Text>,
+        replace_with_file -> Nullable<Text>,
+    }
+}
+
+table! {
     trigger (id) {
         id -> Integer,
         triggered_by -> Text,
@@ -7,3 +18,5 @@ table! {
         team_id -> Text,
     }
 }
+
+allow_tables_to_appear_in_same_query!(edits, trigger,);

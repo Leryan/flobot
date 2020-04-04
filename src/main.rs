@@ -42,6 +42,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         //.add_middleware(Box::new(middleware::Debug::new("debug")))
         .add_middleware(Box::new(middleware::IgnoreSelf::new()))
         .add_post_handler(Box::new(handlers::Trigger::new(db_conn(db_url))))
+        .add_post_handler(Box::new(handlers::Edit::new(db_conn(db_url))))
         .run(receiver.clone())?;
 
     println!("waiting for listener to stop");

@@ -1,4 +1,5 @@
 use crate::models::GenericPost;
+use crate::models::GenericPostEdited;
 use crate::models::GenericStatus;
 use crate::models::StatusCode;
 use crate::models::StatusError as GenericStatusError;
@@ -37,6 +38,11 @@ pub struct Posted {
     team_id: String,
 }
 
+#[derive(Deserialize, Serialize)]
+pub struct PostEdited {
+    post: String,
+}
+
 #[derive(Deserialize, Serialize, Debug)]
 pub struct Status {
     pub status: String,
@@ -51,6 +57,21 @@ pub struct StatusDetails {
     request_id: Option<String>,
     status_code: f64,
     is_oauth: Option<bool>,
+}
+
+impl Into<GenericPostEdited> for PostEdited {
+    fn into(self) -> GenericPostEdited {
+        // FIXME: must still decode self.post
+        let post: Post = serde_json::from_str(self.post.as_str()).unwrap();
+        GenericPostEdited {
+            user_id: post.user_id.clone(),
+            message: post.message.clone(),
+            id: post.id.clone(),
+            channel_id: post.channel_id.clone(),
+            parent_id: post.parent_id.clone(),
+            root_id: post.root_id.clone(),
+        }
+    }
 }
 
 impl Into<GenericPost> for Posted {
@@ -107,6 +128,7 @@ impl Into<GenericStatus> for Status {
 #[serde(untagged)]
 pub enum EventData {
     Posted(Posted),
+    PostEdited(PostEdited),
     Hello(Hello),
 }
 
@@ -142,6 +164,7 @@ impl Into<GenericEvent> for Event {
                 my_user_id: self.broadcast.user_id.clone(),
                 server_string: hello.server_version.clone(),
             }),
+            EventData::PostEdited(edited) => GenericEvent::PostEdited(edited.into()),
         }
     }
 }
@@ -184,6 +207,23 @@ mod tests {
                 assert_eq!(event.channel_type, "O");
                 assert_ne!(event.post, "");
             }
+            _ => panic!("event type not tested"),
+        }
+    }
+
+    #[test]
+    fn post_edited() {
+        let data = r#"{"event": "post_edited", "data": {"post": "{\"id\":\"f4nj6eim7ir8fm6w9a1r75zwmy\",\"create_at\":1586031101535,\"update_at\":1586031103044,\"edit_at\":1586031103044,\"delete_at\":0,\"is_pinned\":false,\"user_id\":\"nn751zdmhfgq9k8orsiyreonbc\",\"channel_id\":\"sxoe6m6y8fr13jcajmaqbqawfh\",\"root_id\":\"\",\"parent_id\":\"\",\"original_id\":\"\",\"message\":\"!e test_team\",\"type\":\"\",\"props\":{},\"hashtags\":\"\",\"pending_post_id\":\"\",\"metadata\":{}}"}, "broadcast": {"omit_users": null, "user_id": "", "channel_id": "sxoe6m6y8fr13jcajmaqbqawfh", "team_id": ""}, "seq": 6}"#;
+        let valid: MetaEvent = serde_json::from_str(data).unwrap();
+        let event = match valid {
+            MetaEvent::Event(event) => event,
+            _ => panic!("wrong type"),
+        };
+
+        assert_eq!(event.type_, "post_edited");
+
+        match event.data {
+            EventData::PostEdited(_event) => {}
             _ => panic!("event type not tested"),
         }
     }

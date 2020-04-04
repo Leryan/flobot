@@ -6,3 +6,11 @@ build:
 vet:
 	cargo check
 	cargo fmt
+
+.PHONY: test
+test:
+	cargo test
+
+.PHONY: run
+run:
+	cargo run
