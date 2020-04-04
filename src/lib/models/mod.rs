@@ -23,6 +23,7 @@ pub struct GenericPost {
     pub root_id: String,
     pub parent_id: String,
     pub id: String,
+    pub team_id: String,
 }
 
 #[derive(Clone, Debug)]

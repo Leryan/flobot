@@ -64,6 +64,7 @@ impl Into<GenericPost> for Posted {
             message: post.message.clone(),
             channel_id: post.channel_id.clone(),
             id: post.id.clone(),
+            team_id: self.team_id.clone(),
         }
     }
 }

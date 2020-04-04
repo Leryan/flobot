@@ -59,7 +59,10 @@ impl<C: Client> Handler<C> for Trigger {
         let message = data.message.as_str();
 
         if !message.starts_with("!trigger ") {
-            let res = trigger.load::<db::Trigger>(&self.dbpool).unwrap_or(vec![]);
+            let res = trigger
+                .filter(team_id.eq(data.team_id.as_str()))
+                .load::<db::Trigger>(&self.dbpool)
+                .unwrap_or(vec![]);
             for t in res {
                 let tb = t.triggered_by.as_str();
                 let tb_word = format!(" {} ", tb);
@@ -83,6 +86,7 @@ impl<C: Client> Handler<C> for Trigger {
 
         if self.match_list.is_match(message) {
             let res = trigger
+                .filter(team_id.eq(data.team_id.as_str()))
                 .order(triggered_by.asc())
                 .load::<db::Trigger>(&self.dbpool);
             match res {
@@ -105,7 +109,7 @@ impl<C: Client> Handler<C> for Trigger {
                     triggered_by: captures.get(1).unwrap().as_str(),
                     emoji: None,
                     text_: Some(captures.get(2).unwrap().as_str()),
-                    team_id: "",
+                    team_id: data.team_id.as_str(),
                 };
 
                 let _res = diesel::insert_into(trigger::table)
@@ -126,7 +130,7 @@ impl<C: Client> Handler<C> for Trigger {
                     triggered_by: captures.get(1).unwrap().as_str(),
                     emoji: Some(captures.get(2).unwrap().as_str()),
                     text_: None,
-                    team_id: "",
+                    team_id: data.team_id.as_str(),
                 };
 
                 let _res = diesel::insert_into(trigger::table)
@@ -140,7 +144,9 @@ impl<C: Client> Handler<C> for Trigger {
         }
         match self.match_del.captures(message) {
             Some(captures) => {
-                let filter = triggered_by.eq(captures.get(1).unwrap().as_str());
+                let tb = captures.get(1).unwrap().as_str();
+                let tid = data.team_id.as_str();
+                let filter = triggered_by.eq(tb).and(team_id.eq(tid));
                 let _res = diesel::delete(trigger.filter(filter)).execute(&self.dbpool);
 
                 client.send_reaction(data.clone(), "ok_hand");
