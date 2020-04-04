@@ -3,13 +3,15 @@ use crate::handlers::Handler;
 use crate::middleware::Middleware;
 use crate::models::{GenericEvent, GenericPost, StatusCode, StatusError};
 use crossbeam::crossbeam_channel::{Receiver, RecvTimeoutError};
+use std::fmt;
 use std::time::Duration;
 
 #[derive(Debug)]
 pub enum ErrorCode {
-    Unknown,
+    Other,
     Middleware,
-    App,
+    Processing,
+    Client,
 }
 
 #[derive(Debug)]
@@ -17,6 +19,14 @@ pub struct Error {
     code: ErrorCode,
     message: String,
 }
+
+impl fmt::Display for Error {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "(code: {:?}, message: {})", self.code, self.message)
+    }
+}
+
+impl std::error::Error for Error {}
 
 pub struct Instance<C: Client> {
     middlewares: Vec<Box<dyn Middleware<C>>>,
@@ -75,6 +85,10 @@ impl<C: Client> Instance<C> {
                     .for_each(|handler| handler.handle(post.clone(), &self.client));
                 Ok(())
             }
+            GenericEvent::PostEdited(_edited) => {
+                println!("edits are unsupported for now");
+                Ok(())
+            }
             GenericEvent::Unsupported(unsupported) => {
                 println!("unsupported event: {:?}", unsupported);
                 Ok(())
@@ -86,7 +100,7 @@ impl<C: Client> Instance<C> {
             GenericEvent::Status(status) => match status.code {
                 StatusCode::OK => Ok(()),
                 StatusCode::Error => Err(Error {
-                    code: ErrorCode::App,
+                    code: ErrorCode::Client,
                     message: status.error.unwrap_or(StatusError::new_none()).message,
                 }),
                 StatusCode::Unsupported => {
@@ -94,7 +108,7 @@ impl<C: Client> Instance<C> {
                     Ok(())
                 }
                 StatusCode::Unknown => Err(Error {
-                    code: ErrorCode::Unknown,
+                    code: ErrorCode::Other,
                     message: status.error.unwrap_or(StatusError::new_none()).message,
                 }),
             },
@@ -111,12 +125,16 @@ impl<C: Client> Instance<C> {
         }
     }
 
-    pub fn run(&mut self, receiver: Receiver<GenericEvent>) -> Result<(), String> {
+    pub fn run(&mut self, receiver: Receiver<GenericEvent>) -> Result<(), Error> {
+        self.client.notify_startup();
         loop {
             match receiver.recv_timeout(Duration::from_secs(5)) {
                 Ok(e) => match self.process(e) {
                     Err(e) => {
-                        return Err(String::from(format!("processing error: {:?}", e)));
+                        return Err(Error {
+                            code: ErrorCode::Processing,
+                            message: format!("processing error: {:?}", e),
+                        });
                     }
                     Ok(_) => {
                         continue;
@@ -125,7 +143,10 @@ impl<C: Client> Instance<C> {
                 Err(rte) => match rte {
                     RecvTimeoutError::Timeout => {}
                     RecvTimeoutError::Disconnected => {
-                        return Err(String::from("receiving channel disconnected"));
+                        return Err(Error {
+                            code: ErrorCode::Client,
+                            message: format!("receiving channel closed"),
+                        });
                     }
                 },
             }
