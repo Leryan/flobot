@@ -22,6 +22,21 @@ A terrible but friendly bot for Mattermost.
 !e some text
 ```
 
+## Install & Use
+
+ * Create a bot account with Admin privileges on Mattermost
+ * Keep it's access token safe
+ * Add the bot to your team(s)
+ * Create a debugging channel (preferably private) and invite the bot into
+
+```
+cargo build --release
+```
+
+Copy `target/release/flobot` and `migrations` folder.
+
+Create `flobot.env` from `flobot.env.example`.
+
 ## Diesel
 
 ```
