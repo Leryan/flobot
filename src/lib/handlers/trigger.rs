@@ -16,7 +16,7 @@ pub struct Trigger<E> {
 impl<E: db::Trigger> Trigger<E> {
     pub fn new(db: Rc<E>) -> Self {
         Self {
-            db: db,
+            db,
             match_list: Regex::new("^!trigger list.*$").unwrap(),
             match_del: Regex::new("^!trigger del \"(.+)\".*").unwrap(),
             match_reaction: Regex::new("^!trigger reaction \"([^\"]+)\" [:\"]([^:]+)[:\"].*$")

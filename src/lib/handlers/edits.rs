@@ -23,7 +23,7 @@ impl<C: Client, E: db::Edits> Edit<C, E> {
             match_add: Regex::new("^!edits add \"(.+)\" \"(.+)\".*").unwrap(),
             match_edit: Regex::new("^!e (.+)").unwrap(),
             phantom: std::marker::PhantomData,
-            db: db,
+            db,
         }
     }
 
