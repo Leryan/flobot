@@ -1,24 +1,15 @@
+mod models;
+
+use self::models::*;
 use crate::client::*;
 use crate::conf::Conf;
-use crate::models::mattermost::MetaEvent;
-use crate::models::GenericEvent;
+use crate::models::*;
 use crossbeam::crossbeam_channel::Sender;
 use reqwest;
-use serde::{Deserialize, Serialize};
+use serde::Serialize;
 use serde_json::json;
 use ws::Sender as WSSender;
 use ws::{connect, CloseCode, Handler, Handshake, Message, Result};
-
-#[derive(Serialize, Deserialize)]
-struct Auth {
-    token: String,
-}
-
-#[derive(Serialize)]
-struct PostEdit<'a> {
-    message: Option<&'a str>,
-    file_ids: Option<Vec<&'a str>>,
-}
 
 struct MattermostWS {
     out: WSSender,

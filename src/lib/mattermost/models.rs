@@ -7,13 +7,24 @@ use crate::models::{GenericEvent, GenericHello};
 use serde::{Deserialize, Serialize};
 use std::convert::Into;
 
+#[derive(Serialize, Deserialize)]
+pub struct Auth {
+    token: String,
+}
+
+#[derive(Serialize)]
+pub struct PostEdit<'a> {
+    pub message: Option<&'a str>,
+    pub file_ids: Option<Vec<&'a str>>,
+}
+
 #[derive(Deserialize, Serialize)]
 pub struct Hello {
     server_version: String,
 }
 
 #[derive(Deserialize, Serialize)]
-pub struct Post {
+struct Post {
     id: String,
     message: String,
     create_at: u64,

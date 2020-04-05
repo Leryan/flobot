@@ -1,8 +1,5 @@
-use crate::models::db::Trigger;
 use crate::models::*;
 use crossbeam::crossbeam_channel::Sender;
-
-pub mod mattermost;
 
 pub trait EventClient {
     fn listen(&self, sender: Sender<GenericEvent>);

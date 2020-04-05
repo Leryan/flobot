@@ -4,11 +4,12 @@ use diesel::Connection;
 use diesel::SqliteConnection;
 use diesel_migrations;
 use dotenv;
-use flobot::client::mattermost::Mattermost;
 use flobot::client::*;
 use flobot::conf::Conf;
+use flobot::db::sqlite as db;
 use flobot::handlers;
 use flobot::instance::Instance;
+use flobot::mattermost::Mattermost;
 use flobot::middleware;
 use std::thread;
 
@@ -41,8 +42,12 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     Instance::new(Mattermost::new(cfg.clone()))
         //.add_middleware(Box::new(middleware::Debug::new("debug")))
         .add_middleware(Box::new(middleware::IgnoreSelf::new()))
-        .add_post_handler(Box::new(handlers::Trigger::new(db_conn(db_url))))
-        .add_post_handler(Box::new(handlers::Edit::new(db_conn(db_url))))
+        .add_post_handler(Box::new(handlers::Trigger::new(db::Sqlite::new(db_conn(
+            db_url,
+        )))))
+        .add_post_handler(Box::new(handlers::Edit::new(db::Sqlite::new(db_conn(
+            db_url,
+        )))))
         .run(receiver.clone())?;
 
     println!("waiting for listener to stop");

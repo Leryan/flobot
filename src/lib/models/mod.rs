@@ -1,6 +1,3 @@
-pub mod db;
-pub mod mattermost;
-
 #[derive(Clone, Debug)]
 pub enum GenericEvent {
     Hello(GenericHello),
@@ -92,4 +89,26 @@ impl StatusError {
             status_code: 0,
         }
     }
+}
+
+// db
+use diesel::Queryable;
+
+#[derive(Debug, Queryable, Clone)]
+pub struct Edit {
+    pub id: i32,
+    pub edit: String,
+    pub team_id: Option<String>,
+    pub user_id: Option<String>,
+    pub replace_with_text: Option<String>,
+    pub replace_with_file: Option<String>,
+}
+
+#[derive(Debug, Queryable)]
+pub struct Trigger {
+    pub id: i32,
+    pub triggered_by: String,
+    pub emoji: Option<String>,
+    pub text_: Option<String>,
+    pub team_id: String,
 }
