@@ -2,6 +2,7 @@ use super::{Handler, Result};
 use crate::client::Client;
 use crate::db;
 use crate::models::GenericPost;
+use std::rc::Rc;
 
 use regex::Regex;
 
@@ -11,11 +12,11 @@ pub struct Edit<C, E> {
     match_add: Regex,
     match_edit: Regex,
     phantom: std::marker::PhantomData<C>,
-    db: E,
+    db: Rc<E>,
 }
 
 impl<C: Client, E: db::Edits> Edit<C, E> {
-    pub fn new(db: E) -> Self {
+    pub fn new(db: Rc<E>) -> Self {
         Self {
             match_list: Regex::new("^!edits list.*$").unwrap(),
             match_del: Regex::new("^!edits del \"(.+)\".*").unwrap(),

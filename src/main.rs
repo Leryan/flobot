@@ -9,6 +9,7 @@ use flobot::handlers;
 use flobot::instance::Instance;
 use flobot::mattermost::Mattermost;
 use flobot::middleware;
+use std::rc::Rc;
 use std::thread;
 
 fn main() -> std::result::Result<(), Box<dyn std::error::Error>> {
@@ -33,17 +34,15 @@ fn main() -> std::result::Result<(), Box<dyn std::error::Error>> {
     db::run_migrations(db_url)?;
 
     println!("launch bot!");
+    let botdb = Rc::new(dbs::Sqlite::new(db::conn(db_url)));
     Instance::new(Mattermost::new(cfg.clone()))
         //.add_middleware(Box::new(middleware::Debug::new("debug")))
         .add_middleware(Box::new(middleware::IgnoreSelf::new()))
-        .add_post_handler(Box::new(handlers::trigger::Trigger::new(dbs::Sqlite::new(
-            db::conn(db_url),
-        ))))
-        .add_post_handler(Box::new(handlers::edits::Edit::new(dbs::Sqlite::new(
-            db::conn(db_url),
-        ))))
+        .add_post_handler(Box::new(handlers::trigger::Trigger::new(botdb.clone())))
+        .add_post_handler(Box::new(handlers::edits::Edit::new(botdb.clone())))
         .run(receiver.clone())?;
 
+    drop(botdb);
     println!("waiting for listener to stop");
     wg.wait();
 

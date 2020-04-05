@@ -3,9 +3,10 @@ use crate::client::Client;
 use crate::db;
 use crate::models::GenericPost;
 use regex::Regex;
+use std::rc::Rc;
 
 pub struct Trigger<E> {
-    db: E,
+    db: Rc<E>,
     match_list: Regex,
     match_del: Regex,
     match_text: Regex,
@@ -13,7 +14,7 @@ pub struct Trigger<E> {
 }
 
 impl<E: db::Trigger> Trigger<E> {
-    pub fn new(db: E) -> Self {
+    pub fn new(db: Rc<E>) -> Self {
         Self {
             db: db,
             match_list: Regex::new("^!trigger list.*$").unwrap(),
