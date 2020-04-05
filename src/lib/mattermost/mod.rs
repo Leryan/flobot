@@ -8,8 +8,9 @@ use crossbeam::crossbeam_channel::Sender;
 use reqwest;
 use serde::Serialize;
 use serde_json::json;
+use ws::Result as WSResult;
 use ws::Sender as WSSender;
-use ws::{connect, CloseCode, Handler, Handshake, Message, Result};
+use ws::{connect, CloseCode, Handler, Handshake, Message};
 
 struct MattermostWS {
     out: WSSender,
@@ -19,7 +20,7 @@ struct MattermostWS {
 }
 
 impl Handler for MattermostWS {
-    fn on_open(&mut self, _: Handshake) -> Result<()> {
+    fn on_open(&mut self, _: Handshake) -> WSResult<()> {
         self.seq += 1;
         let auth = json!({
             "action": "authentication_challenge",
@@ -29,7 +30,7 @@ impl Handler for MattermostWS {
         self.out.send(Message::Text(auth.to_string()))
     }
 
-    fn on_message(&mut self, msg: Message) -> Result<()> {
+    fn on_message(&mut self, msg: Message) -> WSResult<()> {
         let txt = msg.as_text().unwrap();
         let event: MetaEvent = match serde_json::from_str(txt) {
             Ok(v) => v,
@@ -109,7 +110,7 @@ impl Mattermost {
         url
     }
 
-    fn response_result(&self, r: reqwest::Result<reqwest::blocking::Response>) {
+    fn response_result(&self, r: reqwest::Result<reqwest::blocking::Response>) -> Result<()> {
         match r {
             Ok(r) => println!(
                 "{:?} {:?}",
@@ -118,15 +119,17 @@ impl Mattermost {
             ),
             Err(e) => println!("{:?}", e),
         };
+        Ok(())
     }
 }
 
 impl Client for Mattermost {
-    fn set_my_user_id(&mut self, user_id: &str) {
-        self.user_id = String::from(user_id)
+    fn set_my_user_id(&mut self, user_id: &str) -> Result<()> {
+        self.user_id = String::from(user_id);
+        Ok(())
     }
 
-    fn send_post(&self, post: GenericPost) {
+    fn send_post(&self, post: GenericPost) -> Result<()> {
         let c = reqwest::blocking::Client::new();
         let mmpost = Post {
             channel_id: post.channel_id.clone(),
@@ -145,15 +148,15 @@ impl Client for Mattermost {
                 .bearer_auth(self.cfg.token.clone())
                 .json(&mmpost)
                 .send(),
-        );
+        )
     }
 
-    fn send_message(&self, mut post: GenericPost, message: &str) {
+    fn send_message(&self, mut post: GenericPost, message: &str) -> Result<()> {
         post.message = message.to_string();
         self.send_post(post)
     }
 
-    fn send_reaction(&self, post: GenericPost, reaction: &str) {
+    fn send_reaction(&self, post: GenericPost, reaction: &str) -> Result<()> {
         let c = reqwest::blocking::Client::new();
         let reaction = Reaction {
             user_id: self.user_id.clone(),
@@ -165,10 +168,10 @@ impl Client for Mattermost {
                 .bearer_auth(self.cfg.token.clone())
                 .json(&reaction)
                 .send(),
-        );
+        )
     }
 
-    fn send_reply(&self, post: GenericPost, message: &str) {
+    fn send_reply(&self, post: GenericPost, message: &str) -> Result<()> {
         let c = reqwest::blocking::Client::new();
         let mmpost = Post {
             channel_id: post.channel_id.clone(),
@@ -187,10 +190,10 @@ impl Client for Mattermost {
                 .bearer_auth(self.cfg.token.clone())
                 .json(&mmpost)
                 .send(),
-        );
+        )
     }
 
-    fn send_trigger_list(&self, triggers: Vec<Trigger>, from: GenericPost) {
+    fn send_trigger_list(&self, triggers: Vec<Trigger>, from: GenericPost) -> Result<()> {
         let mut l = String::from(format!("Ya {:?} triggers.\n", triggers.len()));
         let mut count = 0;
 
@@ -217,24 +220,26 @@ impl Client for Mattermost {
             }
 
             if count == 20 {
-                self.send_message(from.clone(), l.as_str());
+                self.send_message(from.clone(), l.as_str())?;
                 count = 0;
                 l = String::new();
             }
         }
 
         if count > 0 {
-            self.send_message(from, l.as_str());
+            self.send_message(from, l.as_str())?;
         }
+
+        Ok(())
     }
 
-    fn notify_startup(&self) {
+    fn notify_startup(&self) -> Result<()> {
         let mut post = GenericPost::with_message("jsuilà");
         post.channel_id = self.cfg.debug_channel.clone();
         self.send_post(post)
     }
 
-    fn edit_post_message(&self, post_id: &str, message: &str) {
+    fn edit_post_message(&self, post_id: &str, message: &str) -> Result<()> {
         let edit = PostEdit {
             message: Some(message),
             file_ids: None,
@@ -249,14 +254,14 @@ impl Client for Mattermost {
             .bearer_auth(self.cfg.token.clone())
             .json(&edit)
             .send(),
-        );
+        )
     }
 
-    fn unimplemented(&self, post: GenericPost) {
+    fn unimplemented(&self, post: GenericPost) -> Result<()> {
         self.send_reply(post, "spô encore prêt chéri·e :3 :trollface:")
     }
 
-    fn debug(&self, message: &str) {
+    fn debug(&self, message: &str) -> Result<()> {
         let mut post = GenericPost::with_message(message);
         post.channel_id = self.cfg.debug_channel.clone();
         self.send_post(post)

@@ -1,32 +1,34 @@
 use crate::client::Client;
+use crate::client::Error as ClientError;
 use crate::handlers::Handler;
+use crate::middleware::Error as MiddlewareError;
 use crate::middleware::Middleware;
 use crate::models::{GenericEvent, GenericPost, StatusCode, StatusError};
 use crossbeam::crossbeam_channel::{Receiver, RecvTimeoutError};
-use std::fmt;
+use std::convert::From;
 use std::time::Duration;
 
 #[derive(Debug)]
-pub enum ErrorCode {
-    Other,
-    Middleware,
-    Processing,
-    Client,
+pub enum Error {
+    Other(String),
+    Middleware(MiddlewareError),
+    Processing(String),
+    Client(ClientError),
+    Consumer(String),
+    Status(String),
 }
 
-#[derive(Debug)]
-pub struct Error {
-    code: ErrorCode,
-    message: String,
-}
-
-impl fmt::Display for Error {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "(code: {:?}, message: {})", self.code, self.message)
+impl From<ClientError> for Error {
+    fn from(e: ClientError) -> Self {
+        Error::Client(e)
     }
 }
 
-impl std::error::Error for Error {}
+impl From<MiddlewareError> for Error {
+    fn from(e: MiddlewareError) -> Self {
+        Error::Middleware(e)
+    }
+}
 
 pub struct Instance<C: Client> {
     middlewares: Vec<Box<dyn Middleware<C>>>,
@@ -60,16 +62,12 @@ impl<C: Client> Instance<C> {
         let event = &mut event.clone();
 
         for middleware in self.middlewares.iter_mut() {
-            match middleware.process(event, &mut self.client) {
-                Ok(cont) => match cont {
-                    false => return Ok(None),
-                    true => continue,
-                },
-                Err(e) => {
-                    return Err(Error {
-                        code: ErrorCode::Middleware,
-                        message: e,
-                    })
+            match middleware.process(event, &mut self.client)? {
+                false => {
+                    return Ok(None);
+                }
+                true => {
+                    continue;
                 }
             };
         }
@@ -80,9 +78,16 @@ impl<C: Client> Instance<C> {
     fn process_event(&self, event: GenericEvent) -> Result<(), Error> {
         match event {
             GenericEvent::Post(post) => {
-                self.post_handlers
-                    .iter()
-                    .for_each(|handler| handler.handle(post.clone(), &self.client));
+                for handler in self.post_handlers.iter() {
+                    let res = handler.handle(post.clone(), &self.client);
+                    let _ = match res {
+                        Ok(_) => {}
+                        Err(e) => match self.client.debug(format!("error: {:?}", e).as_str()) {
+                            Ok(_) => {}
+                            Err(e) => println!("debug error: {:?}", e),
+                        },
+                    };
+                }
                 Ok(())
             }
             GenericEvent::PostEdited(_edited) => {
@@ -99,57 +104,42 @@ impl<C: Client> Instance<C> {
             }
             GenericEvent::Status(status) => match status.code {
                 StatusCode::OK => Ok(()),
-                StatusCode::Error => Err(Error {
-                    code: ErrorCode::Client,
-                    message: status.error.unwrap_or(StatusError::new_none()).message,
-                }),
+                StatusCode::Error => Err(Error::Status(
+                    status.error.unwrap_or(StatusError::new_none()).message,
+                )),
                 StatusCode::Unsupported => {
                     println!("unsupported: {:?}", status);
                     Ok(())
                 }
-                StatusCode::Unknown => Err(Error {
-                    code: ErrorCode::Other,
-                    message: status.error.unwrap_or(StatusError::new_none()).message,
-                }),
+                StatusCode::Unknown => Err(Error::Other(
+                    status.error.unwrap_or(StatusError::new_none()).message,
+                )),
             },
         }
     }
 
     fn process(&mut self, event: GenericEvent) -> Result<(), Error> {
-        match self.process_middlewares(event) {
-            Ok(res) => match res {
-                Some(event) => self.process_event(event),
-                None => Ok(()),
-            },
-            Err(e) => Err(e),
+        let res = self.process_middlewares(event)?;
+        match res {
+            Some(event) => self.process_event(event),
+            None => Ok(()),
         }
     }
 
     pub fn run(&mut self, receiver: Receiver<GenericEvent>) -> Result<(), Error> {
-        self.client.notify_startup();
+        let _ = self.client.notify_startup()?;
         loop {
             match receiver.recv_timeout(Duration::from_secs(5)) {
-                Ok(e) => match self.process(e) {
-                    Err(e) => {
-                        return Err(Error {
-                            code: ErrorCode::Processing,
-                            message: format!("processing error: {:?}", e),
-                        });
-                    }
-                    Ok(_) => {
-                        continue;
-                    }
-                },
+                Ok(e) => {
+                    self.process(e)?;
+                }
                 Err(rte) => match rte {
                     RecvTimeoutError::Timeout => {}
                     RecvTimeoutError::Disconnected => {
-                        return Err(Error {
-                            code: ErrorCode::Client,
-                            message: format!("receiving channel closed"),
-                        });
+                        return Err(Error::Consumer(format!("receiving channel closed")));
                     }
                 },
-            }
+            };
         }
     }
 }

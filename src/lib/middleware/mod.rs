@@ -1,7 +1,20 @@
 use crate::client::Client;
+use crate::client::Error as ClientError;
 use crate::models::GenericEvent;
+use std::convert::From;
 
-type Result = std::result::Result<bool, String>;
+#[derive(Debug)]
+pub enum Error {
+    Client(String),
+}
+
+type Result = std::result::Result<bool, Error>;
+
+impl From<ClientError> for Error {
+    fn from(e: ClientError) -> Self {
+        Self::Client(format!("{:?}", e))
+    }
+}
 
 pub trait Middleware<C: Client> {
     fn process(&mut self, event: &mut GenericEvent, client: &mut C) -> Result;
@@ -43,7 +56,7 @@ impl<C: Client> Middleware<C> for IgnoreSelf {
         match event {
             GenericEvent::Hello(hello) => {
                 self.my_user_id = hello.my_user_id.clone();
-                client.set_my_user_id(self.my_user_id.as_str());
+                client.set_my_user_id(self.my_user_id.as_str())?;
                 println!("updated my true self {:?}", self.my_user_id);
                 Ok(true)
             }

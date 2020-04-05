@@ -28,8 +28,7 @@ impl Trigger for Sqlite {
         Ok(trigger
             .filter(team_id.eq(team_id_))
             .order_by(text_) // emojis first -> all emoji triggers processed first, then text
-            .load::<models::Trigger>(&self.db)
-            .unwrap_or(vec![]))
+            .load::<models::Trigger>(&self.db)?)
     }
 
     fn add_text(&self, team_id: &str, trigger_: &str, text_: &str) -> Result<()> {
