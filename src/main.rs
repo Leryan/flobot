@@ -33,7 +33,7 @@ fn main() -> std::result::Result<(), Box<dyn std::error::Error>> {
     db::run_migrations(db_url)?;
 
     println!("launch bot!");
-    match Instance::new(Mattermost::new(cfg.clone()))
+    Instance::new(Mattermost::new(cfg.clone()))
         //.add_middleware(Box::new(middleware::Debug::new("debug")))
         .add_middleware(Box::new(middleware::IgnoreSelf::new()))
         .add_post_handler(Box::new(handlers::trigger::Trigger::new(dbs::Sqlite::new(
@@ -42,11 +42,7 @@ fn main() -> std::result::Result<(), Box<dyn std::error::Error>> {
         .add_post_handler(Box::new(handlers::edits::Edit::new(dbs::Sqlite::new(
             db::conn(db_url),
         ))))
-        .run(receiver.clone())
-    {
-        Ok(_) => {}
-        Err(e) => println!("instance stopped with error: {:?}", e),
-    };
+        .run(receiver.clone())?;
 
     println!("waiting for listener to stop");
     wg.wait();

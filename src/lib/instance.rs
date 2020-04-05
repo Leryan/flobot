@@ -18,6 +18,14 @@ pub enum Error {
     Status(String),
 }
 
+impl std::error::Error for Error {}
+
+impl std::fmt::Display for Error {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "Instance got a fatal error: {:?}", self)
+    }
+}
+
 impl From<ClientError> for Error {
     fn from(e: ClientError) -> Self {
         Error::Client(e)
