@@ -1,6 +1,26 @@
 # FloBot
 
- * Uses Sqlite3
+A terrible but friendly bot for Mattermost.
+
+## Features
+
+### Triggers
+
+```
+!trigger list
+!trigger text "some text" "triggers this response"
+!trigger reaction "some text" :triggered_emoji:
+!trigger del "some text"
+```
+
+### Edits
+
+```
+!edits list
+!edits add "some text" "will be replaced with this one"
+!edits del "some text"
+!e some text
+```
 
 ## Diesel
 
