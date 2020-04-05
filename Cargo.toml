@@ -10,14 +10,19 @@ edition = "2018"
 name = "flobot"
 path = "src/lib/lib.rs"
 
+[features]
+default = ["sqlite"]
+sqlite = []
+postgres = []
+
 [dependencies]
+diesel = { version = "1.4", features = ["sqlite"] }
+diesel_migrations = { version="1.4", features= ["sqlite"]}
 ws = {version = "*", features = ["nativetls"]}
 dotenv = "*"
 serde = {version = "1.0", features = ["derive"]}
 serde_json = "1.0"
 crossbeam = "0.7"
-diesel = { version = "1.4", features = ["sqlite"] }
-diesel_migrations = { version="1.4", features= ["sqlite"]}
 r2d2 = "*"
 r2d2_sqlite = "*"
 regex = "*"
