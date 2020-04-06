@@ -1,9 +1,11 @@
 use crate::client::Client;
 use crate::db;
+use crate::db::tempo::Tempo;
 use crate::handlers::{Handler, Result};
 use crate::models::GenericPost;
 use regex::Regex;
 use std::rc::Rc;
+use std::time::Duration;
 
 pub struct Trigger<E> {
     db: Rc<E>,
@@ -11,12 +13,16 @@ pub struct Trigger<E> {
     match_del: Regex,
     match_text: Regex,
     match_reaction: Regex,
+    tempo: Tempo,
+    delay_repeat: Duration,
 }
 
 impl<E: db::Trigger> Trigger<E> {
-    pub fn new(db: Rc<E>) -> Self {
+    pub fn new(db: Rc<E>, tempo: Tempo, delay_repeat: Duration) -> Self {
         Self {
             db,
+            tempo,
+            delay_repeat,
             match_list: Regex::new("^!trigger list.*$").unwrap(),
             match_del: Regex::new("^!trigger del \"(.+)\".*").unwrap(),
             match_reaction: Regex::new("^!trigger reaction \"([^\"]+)\" [:\"]([^:]+)[:\"].*$")
@@ -29,7 +35,7 @@ impl<E: db::Trigger> Trigger<E> {
 impl<C: Client, E: db::Trigger> Handler<C> for Trigger<E> {
     type Data = GenericPost;
 
-    fn handle(&self, data: GenericPost, client: &C) -> Result {
+    fn handle(&mut self, data: GenericPost, client: &C) -> Result {
         let message = data.message.as_str();
 
         if !message.starts_with("!trigger ") {
@@ -45,6 +51,16 @@ impl<C: Client, E: db::Trigger> Handler<C> for Trigger<E> {
                     || message == t.triggered_by.as_str()
                 {
                     if t.text_.is_some() {
+                        let tempo_key = format!(
+                            "{}{}{}",
+                            data.team_id.as_str(),
+                            data.channel_id.as_str(),
+                            tb
+                        );
+                        if self.tempo.exists(tempo_key.as_str()) {
+                            break;
+                        }
+                        self.tempo.set(tempo_key.as_str(), self.delay_repeat);
                         client.send_reply(data.clone(), t.text_.unwrap().as_str())?;
                         break;
                     } else {

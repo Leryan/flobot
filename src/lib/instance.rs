@@ -38,9 +38,11 @@ impl From<MiddlewareError> for Error {
     }
 }
 
+pub type PostHandler<C> = Box<dyn Handler<C, Data = GenericPost>>;
+
 pub struct Instance<C: Client> {
     middlewares: Vec<Box<dyn Middleware<C>>>,
-    post_handlers: Vec<Box<dyn Handler<C, Data = GenericPost>>>,
+    post_handlers: Vec<PostHandler<C>>,
     client: C,
 }
 
@@ -58,10 +60,7 @@ impl<C: Client> Instance<C> {
         self
     }
 
-    pub fn add_post_handler(
-        &mut self,
-        handler: Box<dyn Handler<C, Data = GenericPost>>,
-    ) -> &mut Self {
+    pub fn add_post_handler(&mut self, handler: PostHandler<C>) -> &mut Self {
         self.post_handlers.push(handler);
         self
     }
@@ -83,10 +82,10 @@ impl<C: Client> Instance<C> {
         Ok(Some(event.clone()))
     }
 
-    fn process_event(&self, event: GenericEvent) -> Result<(), Error> {
+    fn process_event(&mut self, event: GenericEvent) -> Result<(), Error> {
         match event {
             GenericEvent::Post(post) => {
-                for handler in self.post_handlers.iter() {
+                for handler in self.post_handlers.iter_mut() {
                     let res = handler.handle(post.clone(), &self.client);
                     let _ = match res {
                         Ok(_) => {}

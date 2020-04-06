@@ -136,7 +136,7 @@ impl<C: Client, E: db::Edits> Edit<C, E> {
 impl<C: Client, E: db::Edits> Handler<C> for Edit<C, E> {
     type Data = GenericPost;
 
-    fn handle(&self, data: GenericPost, client: &C) -> Result {
+    fn handle(&mut self, data: GenericPost, client: &C) -> Result {
         self.handle_post(data, client)
     }
 }
