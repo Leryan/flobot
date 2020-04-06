@@ -15,3 +15,10 @@ test:
 .PHONY: run
 run:
 	cargo run
+
+.PHONY: deploy
+deploy: build
+	systemctl stop bot
+	cp target/release/flobot /home/bot/
+	rsync -avKSHc --delete ./migrations/ /home/bot/migrations/
+	systemctl start bot
