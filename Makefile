@@ -17,7 +17,7 @@ run:
 	cargo run
 
 .PHONY: deploy
-deploy: build
+deploy:
 	systemctl stop bot
 	cp target/release/flobot /home/bot/
 	rsync -avKSHc --delete ./migrations/ /home/bot/migrations/
