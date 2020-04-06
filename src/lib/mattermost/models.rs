@@ -198,7 +198,7 @@ impl Into<GenericEvent> for MetaEvent {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
+    use crate::mattermost::*;
 
     #[test]
     fn post_valid() {
