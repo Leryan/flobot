@@ -1,6 +1,6 @@
-use super::{Handler, Result};
 use crate::client::Client;
 use crate::db;
+use crate::handlers::{Handler, Result};
 use crate::models::GenericPost;
 use regex::Regex;
 use std::rc::Rc;

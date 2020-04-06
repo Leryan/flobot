@@ -31,15 +31,16 @@ fn main() -> std::result::Result<(), Box<dyn std::error::Error>> {
     }
 
     println!("run db migrations");
-    db::run_migrations(db_url)?;
+    let conn = db::conn(db_url);
+    db::run_migrations(&conn)?;
 
     println!("launch bot!");
-    let botdb = Rc::new(dbs::Sqlite::new(db::conn(db_url)));
+    let botdb = Rc::new(dbs::Sqlite::new(conn));
     Instance::new(Mattermost::new(cfg.clone()))
         //.add_middleware(Box::new(middleware::Debug::new("debug")))
         .add_middleware(Box::new(middleware::IgnoreSelf::new()))
-        .add_post_handler(Box::new(handlers::trigger::Trigger::new(botdb.clone())))
-        .add_post_handler(Box::new(handlers::edits::Edit::new(botdb.clone())))
+        .add_post_handler(Box::new(handlers::trigger::Trigger::new(Rc::clone(&botdb))))
+        .add_post_handler(Box::new(handlers::edits::Edit::new(Rc::clone(&botdb))))
         .run(receiver.clone())?;
 
     drop(botdb);

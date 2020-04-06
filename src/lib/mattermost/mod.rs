@@ -1,8 +1,8 @@
 mod models;
 
-use self::models::*;
 use crate::client::*;
 use crate::conf::Conf;
+use crate::mattermost::models::*;
 use crate::models::*;
 use crossbeam::crossbeam_channel::Sender;
 use reqwest;

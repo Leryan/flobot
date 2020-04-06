@@ -10,6 +10,7 @@ vet:
 .PHONY: test
 test:
 	cargo test
+	cargo fmt
 
 .PHONY: run
 run:

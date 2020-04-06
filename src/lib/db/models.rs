@@ -1,5 +1,5 @@
-use crate::schema::edits;
-use crate::schema::trigger;
+use crate::db::schema::edits;
+use crate::db::schema::trigger;
 use diesel::Insertable;
 
 #[derive(Insertable)]

@@ -1,11 +1,15 @@
 pub mod models;
-pub mod sqlite;
 use diesel::Connection;
-use diesel::SqliteConnection;
 use diesel_migrations;
 use std::convert::From;
 
 use crate::models as business_models;
+
+#[cfg(feature = "sqlite")]
+pub type DatabaseConnection = diesel::SqliteConnection;
+pub mod schema;
+#[cfg(feature = "sqlite")]
+pub mod sqlite;
 
 #[derive(Debug)]
 pub enum Error {
@@ -58,11 +62,11 @@ pub trait Edits {
     fn add_team(&self, team_id: &str, edit: &str, replace: &str) -> Result<()>;
 }
 
-pub fn conn(db_url: &str) -> SqliteConnection {
-    return SqliteConnection::establish(db_url).expect("db connection");
+pub fn conn(db_url: &str) -> DatabaseConnection {
+    return DatabaseConnection::establish(db_url).expect("db connection");
 }
 
-pub fn run_migrations(db_url: &str) -> Result<()> {
-    let _ = diesel_migrations::run_pending_migrations(&conn(db_url))?;
+pub fn run_migrations(conn: &DatabaseConnection) -> Result<()> {
+    let _ = diesel_migrations::run_pending_migrations(conn)?;
     Ok(())
 }
