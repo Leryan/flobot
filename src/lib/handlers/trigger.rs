@@ -57,9 +57,14 @@ impl<C: Client, E: db::Trigger> Handler<C> for Trigger<E> {
                             data.channel_id.as_str(),
                             tb
                         );
+
+                        // sending this trigger has been delayed
                         if self.tempo.exists(tempo_key.as_str()) {
+                            self.tempo.set(tempo_key.as_str(), self.delay_repeat);
                             break;
                         }
+
+                        // now, delay this trigger
                         self.tempo.set(tempo_key.as_str(), self.delay_repeat);
                         client.send_reply(data.clone(), t.text_.unwrap().as_str())?;
                         break;
