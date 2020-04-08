@@ -17,7 +17,7 @@ use std::time::Duration;
 fn main() -> std::result::Result<(), Box<dyn std::error::Error>> {
     dotenv::from_filename("flobot.env").ok();
     let cfg = Conf::new().expect("cfg err");
-    let db_url = cfg.db_url.as_str();
+    let db_url: &str = &cfg.db_url;
 
     let (sender, receiver) = unbounded();
     let wg = WaitGroup::new();

@@ -64,7 +64,7 @@ impl EventClient for Mattermost {
     fn listen(&self, sender: Sender<GenericEvent>) {
         let mut url = self.cfg.ws_url.clone();
         url.push_str("/api/v4/websocket");
-        connect(url.as_str(), |out| MattermostWS {
+        connect(url, |out| MattermostWS {
             out: out,
             send: sender.clone(),
             token: self.cfg.token.clone(),
@@ -145,7 +145,7 @@ impl Client for Mattermost {
             channel_id: post.channel_id.clone(),
             create_at: 0,
             file_ids: vec![],
-            message: post.message.as_str(),
+            message: &post.message,
             metadata: Metadata {},
             props: Props {},
             update_at: 0,
@@ -154,7 +154,7 @@ impl Client for Mattermost {
             root_id: None,
         };
         self.response_result(
-            c.post(self.url("/posts").as_str())
+            c.post(&self.url("/posts"))
                 .bearer_auth(self.cfg.token.clone())
                 .json(&mmpost)
                 .send(),
@@ -174,7 +174,7 @@ impl Client for Mattermost {
             emoji_name: String::from(reaction),
         };
         self.response_result(
-            c.post(self.url("/reactions").as_str())
+            c.post(&self.url("/reactions"))
                 .bearer_auth(self.cfg.token.clone())
                 .json(&reaction)
                 .send(),
@@ -196,7 +196,7 @@ impl Client for Mattermost {
             root_id: Some(post.id.clone()),
         };
         self.response_result(
-            c.post(self.url("/posts").as_str())
+            c.post(&self.url("/posts"))
                 .bearer_auth(self.cfg.token.clone())
                 .json(&mmpost)
                 .send(),
@@ -210,34 +210,28 @@ impl Client for Mattermost {
         for trigger in triggers {
             count += 1;
             if trigger.emoji.is_some() {
-                l.push_str(
-                    format!(
-                        " * `{}`: :{}:\n",
-                        trigger.triggered_by,
-                        trigger.emoji.unwrap()
-                    )
-                    .as_str(),
-                );
+                l.push_str(&format!(
+                    " * `{}`: :{}:\n",
+                    trigger.triggered_by,
+                    trigger.emoji.unwrap()
+                ));
             } else {
-                l.push_str(
-                    format!(
-                        " * `{}`: {}\n",
-                        trigger.triggered_by,
-                        trigger.text_.unwrap()
-                    )
-                    .as_str(),
-                );
+                l.push_str(&format!(
+                    " * `{}`: {}\n",
+                    trigger.triggered_by,
+                    trigger.text_.unwrap()
+                ));
             }
 
             if count == 20 {
-                self.send_message(from.clone(), l.as_str())?;
+                self.send_message(from.clone(), &l)?;
                 count = 0;
                 l = String::new();
             }
         }
 
         if count > 0 {
-            self.send_message(from, l.as_str())?;
+            self.send_message(from, &l)?;
         }
 
         Ok(())
@@ -257,13 +251,10 @@ impl Client for Mattermost {
 
         let c = reqwest::blocking::Client::new();
         self.response_result(
-            c.put(
-                self.url(format!("/posts/{}/patch", post_id).as_str())
-                    .as_str(),
-            )
-            .bearer_auth(self.cfg.token.clone())
-            .json(&edit)
-            .send(),
+            c.put(&self.url(&format!("/posts/{}/patch", post_id)))
+                .bearer_auth(self.cfg.token.clone())
+                .json(&edit)
+                .send(),
         )
     }
 

@@ -54,14 +54,14 @@ impl<T: Hash + Eq> Tempo<T> {
         store.insert(key, expire_in);
     }
 
-    pub fn exists(&mut self, key: &T) -> bool {
+    pub fn exists(&mut self, key: T) -> bool {
         let mut store = self.store.lock().unwrap();
         let res = store.get(&key);
         match res {
             Some(expire_in) => {
                 let now = Instant::now();
                 if expire_in.le(&now) {
-                    store.remove(key);
+                    store.remove(&key);
                     return false;
                 }
                 return true;

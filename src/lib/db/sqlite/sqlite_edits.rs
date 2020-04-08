@@ -31,8 +31,8 @@ impl crate::db::Edits for super::Sqlite {
     /// s.add_team("noteam", "edit", "noreplace").unwrap();
     /// let e = s.find("user", "team", "edit").unwrap().unwrap(); // no error, Some(edit)
     ///
-    /// assert_eq!("edit", e.edit.as_str());
-    /// assert_eq!("replace", e.replace_with_text.unwrap().as_str());
+    /// assert_eq!("edit", e.edit);
+    /// assert_eq!("replace", e.replace_with_text.unwrap());
     /// assert_eq!(None, e.replace_with_file);
     /// # }
     /// ```

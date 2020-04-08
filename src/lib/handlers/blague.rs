@@ -42,41 +42,39 @@ impl<C: Client, S: DBBlague> Handler<C> for Blague<S> {
     }
 
     fn handle(&mut self, data: GenericPost, client: &C) -> Result {
-        let msg = data.message.as_str();
+        let msg: &str = &data.message;
 
         if msg == "!blague" {
-            let blagues = self.store.list(data.team_id.as_str())?;
+            let blagues = self.store.list(&data.team_id)?;
             if blagues.len() < 1 {
-                return Ok(client.send_message(data.clone(), "faut d’abord en créer")?);
+                return Ok(client.send_message(data, "faut d’abord en créer")?);
             }
             let mut r = self.rng.gen_range(0, blagues.len());
             if r > blagues.len() - 1 {
                 r = r - 1;
             }
             match blagues.get(r) {
-                Some(blague) => return Ok(client.send_message(data, blague.text.as_str())?),
+                Some(blague) => return Ok(client.send_message(data, &blague.text)?),
                 None => return Ok(client.debug("ya une merdouille avec les blagues")?),
             };
         } else if msg == "!blague list" {
-            let blagues = self.store.list(data.team_id.as_str())?;
+            let blagues = self.store.list(&data.team_id)?;
             let mut rep = String::from("Liste des blagounettes:\n");
             for blague in blagues {
-                rep.push_str(format!(" * {}: {}\n", blague.id, blague.text.as_str()).as_str());
+                rep.push_str(&format!(" * {}: {}\n", blague.id, &blague.text));
             }
 
-            return Ok(client.send_message(data, rep.as_str())?);
+            return Ok(client.send_message(data, &rep)?);
         }
 
         match self.match_del.captures(msg) {
             Some(captures) => {
                 match captures.get(1).unwrap().as_str().trim().parse() {
                     Ok(num) => {
-                        self.store.del(data.team_id.as_str(), num)?;
+                        self.store.del(&data.team_id, num)?;
                         return Ok(client.send_reaction(data, "ok_hand")?);
                     }
-                    Err(e) => {
-                        return Ok(client.send_reply(data, format!("beurk: {:?}", e).as_str())?)
-                    }
+                    Err(e) => return Ok(client.send_reply(data, &format!("beurk: {:?}", e))?),
                 };
             }
             None => {}
@@ -86,16 +84,14 @@ impl<C: Client, S: DBBlague> Handler<C> for Blague<S> {
             match msg.splitn(2, " ").collect::<Vec<&str>>().get(1) {
                 Some(blague) => {
                     if blague.len() > 300 {
-                        return Ok(client.send_reply(
-                            data.clone(),
-                            "la blague est trop longue. max 300 caractères",
-                        )?);
+                        return Ok(client
+                            .send_reply(data, "la blague est trop longue. max 300 caractères")?);
                     }
-                    self.store.add(data.team_id.as_str(), blague)?;
-                    return Ok(client.send_reaction(data.clone(), "ok_hand")?);
+                    self.store.add(&data.team_id, blague)?;
+                    return Ok(client.send_reaction(data, "ok_hand")?);
                 }
                 None => {
-                    return Ok(client.send_reply(data.clone(), "t’as des gros doigts papa")?);
+                    return Ok(client.send_reply(data, "t’as des gros doigts papa")?);
                 }
             }
         }

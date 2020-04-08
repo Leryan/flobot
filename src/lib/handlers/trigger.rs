@@ -50,40 +50,35 @@ impl<C: Client, E: db::Trigger> Handler<C> for Trigger<E> {
     }
 
     fn handle(&mut self, data: GenericPost, client: &C) -> Result {
-        let message = data.message.as_str();
+        let message: &str = &data.message;
 
         if !message.starts_with("!trigger ") {
-            let res = self.db.search(data.team_id.as_str())?;
+            let res = self.db.search(&data.team_id)?;
             for t in res {
-                let tb = t.triggered_by.as_str();
-                let tb_word = format!(" {} ", tb);
-                let tb_start = format!("{} ", tb);
-                let tb_end = format!(" {}", tb);
-                if message.contains(tb_word.as_str())
-                    || message.starts_with(tb_start.as_str())
-                    || message.ends_with(tb_end.as_str())
-                    || message == t.triggered_by.as_str()
+                let tb = &t.triggered_by;
+                let tb_word = &format!(" {} ", tb);
+                let tb_start = &format!("{} ", tb);
+                let tb_end = &format!(" {}", tb);
+                if message.contains(tb_word)
+                    || message.starts_with(tb_start)
+                    || message.ends_with(tb_end)
+                    || message == t.triggered_by
                 {
                     if t.text_.is_some() {
-                        let tempo_key = format!(
-                            "{}{}{}",
-                            data.team_id.as_str(),
-                            data.channel_id.as_str(),
-                            tb
-                        );
+                        let tempo_key = format!("{}{}{}", &data.team_id, &data.channel_id, tb);
 
                         // sending this trigger has been delayed
-                        if self.tempo.exists(&tempo_key) {
-                            self.tempo.set(tempo_key, self.delay_repeat);
+                        if self.tempo.exists(tempo_key.clone()) {
+                            self.tempo.set(tempo_key.clone(), self.delay_repeat);
                             break;
                         }
 
                         // now, delay this trigger
-                        self.tempo.set(tempo_key, self.delay_repeat);
-                        client.send_reply(data.clone(), t.text_.unwrap().as_str())?;
+                        self.tempo.set(tempo_key.clone(), self.delay_repeat);
+                        client.send_reply(data, &t.text_.unwrap())?;
                         break;
                     } else {
-                        client.send_reaction(data.clone(), t.emoji.unwrap().as_str())?;
+                        client.send_reaction(data.clone(), &t.emoji.unwrap())?;
                     }
                 }
             }
@@ -91,18 +86,18 @@ impl<C: Client, E: db::Trigger> Handler<C> for Trigger<E> {
         }
 
         if self.match_list.is_match(message) {
-            let res = self.db.list(data.team_id.as_str())?;
+            let res = self.db.list(&data.team_id)?;
             return Ok(client.send_trigger_list(res, data)?);
         }
 
         match self.match_text.captures(message) {
             Some(captures) => {
                 let _ = self.db.add_text(
-                    data.team_id.as_str(),
+                    &data.team_id,
                     captures.get(1).unwrap().as_str(),
                     captures.get(2).unwrap().as_str(),
                 );
-                return Ok(client.send_reaction(data.clone(), "ok_hand")?);
+                return Ok(client.send_reaction(data, "ok_hand")?);
             }
             None => {}
         }
@@ -110,11 +105,11 @@ impl<C: Client, E: db::Trigger> Handler<C> for Trigger<E> {
         match self.match_reaction.captures(message) {
             Some(captures) => {
                 let _ = self.db.add_emoji(
-                    data.team_id.as_str(),
+                    &data.team_id,
                     captures.get(1).unwrap().as_str(),
                     captures.get(2).unwrap().as_str(),
                 );
-                return Ok(client.send_reaction(data.clone(), "ok_hand")?);
+                return Ok(client.send_reaction(data, "ok_hand")?);
             }
             None => {}
         }
@@ -122,8 +117,8 @@ impl<C: Client, E: db::Trigger> Handler<C> for Trigger<E> {
             Some(captures) => {
                 let _ = self
                     .db
-                    .del(data.team_id.as_str(), captures.get(1).unwrap().as_str())?;
-                return Ok(client.send_reaction(data.clone(), "ok_hand")?);
+                    .del(&data.team_id, captures.get(1).unwrap().as_str())?;
+                return Ok(client.send_reaction(data, "ok_hand")?);
             }
             None => {}
         }

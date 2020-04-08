@@ -92,23 +92,23 @@ impl<C: Client> Instance<C> {
     }
 
     fn process_help(&self, post: &GenericPost) -> Result<(), Error> {
-        if post.message.as_str() == "!help" {
+        if &post.message == "!help" {
             let mut reply = String::new();
             let mut keys: Vec<String> = self.helps.keys().map(|v| v.clone()).collect();
             keys.sort();
             for key in keys.iter() {
-                reply.push_str(format!("`{}`\n", key).as_str());
+                reply.push_str(&format!("`{}`\n", key));
             }
 
             return self
                 .client
-                .send_reply(post.clone(), reply.as_str())
+                .send_reply(post.clone(), &reply)
                 .map_err(client_err);
         }
 
         match regex::Regex::new("^!help ([a-zA-Z0-9_-]+).*")
             .unwrap()
-            .captures(post.message.as_str())
+            .captures(&post.message)
         {
             Some(captures) => {
                 let name = captures.get(1).unwrap().as_str();
@@ -128,7 +128,7 @@ impl<C: Client> Instance<C> {
             let res = handler.handle(post.clone(), &self.client);
             let _ = match res {
                 Ok(_) => {}
-                Err(e) => match self.client.debug(format!("error: {:?}", e).as_str()) {
+                Err(e) => match self.client.debug(&format!("error: {:?}", e)) {
                     Ok(_) => {}
                     Err(e) => println!("debug error: {:?}", e),
                 },

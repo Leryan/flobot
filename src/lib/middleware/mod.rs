@@ -61,12 +61,12 @@ impl<C: Client> Middleware<C> for IgnoreSelf {
         match event {
             GenericEvent::Hello(hello) => {
                 self.my_user_id = hello.my_user_id.clone();
-                client.set_my_user_id(self.my_user_id.as_str())?;
-                println!("updated my true self {:?}", self.my_user_id);
+                client.set_my_user_id(&self.my_user_id)?;
+                println!("updated my true self {}", self.my_user_id);
                 Ok(Continue::Yes)
             }
             GenericEvent::Post(post) => {
-                if post.user_id == self.my_user_id.as_ref() {
+                if post.user_id == self.my_user_id {
                     Ok(Continue::No)
                 } else {
                     Ok(Continue::Yes)

@@ -73,7 +73,7 @@ pub struct StatusDetails {
 impl Into<GenericPostEdited> for PostEdited {
     fn into(self) -> GenericPostEdited {
         // FIXME: must still decode self.post
-        let post: Post = serde_json::from_str(self.post.as_str()).unwrap();
+        let post: Post = serde_json::from_str(&self.post).unwrap();
         GenericPostEdited {
             user_id: post.user_id.clone(),
             message: post.message.clone(),
@@ -88,7 +88,7 @@ impl Into<GenericPostEdited> for PostEdited {
 impl Into<GenericPost> for Posted {
     fn into(self) -> GenericPost {
         // FIXME: must still decode self.post
-        let post: Post = serde_json::from_str(self.post.as_str()).unwrap();
+        let post: Post = serde_json::from_str(&self.post).unwrap();
         GenericPost {
             user_id: post.user_id.clone(),
             root_id: post.root_id.clone(),
