@@ -77,10 +77,10 @@ impl<C: Client> Instance<C> {
     }
 
     fn process_middlewares(&mut self, event: GenericEvent) -> Result<Option<GenericEvent>, Error> {
-        let event = &mut event.clone();
+        let refevent = &mut event.clone();
 
         for middleware in self.middlewares.iter_mut() {
-            match middleware.process(event, &mut self.client)? {
+            match middleware.process(refevent, &mut self.client)? {
                 Continue::Yes => continue,
                 Continue::No => {
                     return Ok(None);
@@ -88,7 +88,7 @@ impl<C: Client> Instance<C> {
             };
         }
 
-        Ok(Some(event.clone()))
+        Ok(Some(event))
     }
 
     fn process_help(&self, post: &GenericPost) -> Result<(), Error> {

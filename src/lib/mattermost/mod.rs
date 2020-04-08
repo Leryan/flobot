@@ -155,7 +155,7 @@ impl Client for Mattermost {
         };
         self.response_result(
             c.post(&self.url("/posts"))
-                .bearer_auth(self.cfg.token.clone())
+                .bearer_auth(&self.cfg.token)
                 .json(&mmpost)
                 .send(),
         )
@@ -175,7 +175,7 @@ impl Client for Mattermost {
         };
         self.response_result(
             c.post(&self.url("/reactions"))
-                .bearer_auth(self.cfg.token.clone())
+                .bearer_auth(&self.cfg.token)
                 .json(&reaction)
                 .send(),
         )
@@ -197,7 +197,7 @@ impl Client for Mattermost {
         };
         self.response_result(
             c.post(&self.url("/posts"))
-                .bearer_auth(self.cfg.token.clone())
+                .bearer_auth(&self.cfg.token)
                 .json(&mmpost)
                 .send(),
         )
@@ -252,7 +252,7 @@ impl Client for Mattermost {
         let c = reqwest::blocking::Client::new();
         self.response_result(
             c.put(&self.url(&format!("/posts/{}/patch", post_id)))
-                .bearer_auth(self.cfg.token.clone())
+                .bearer_auth(&self.cfg.token)
                 .json(&edit)
                 .send(),
         )
