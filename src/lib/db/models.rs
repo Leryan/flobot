@@ -1,3 +1,4 @@
+use crate::db::schema::blague;
 use crate::db::schema::edits;
 use crate::db::schema::trigger;
 use diesel::Insertable;
@@ -19,4 +20,11 @@ pub struct NewEdit<'a> {
     pub user_id: Option<&'a str>,
     pub replace_with_text: Option<&'a str>,
     pub replace_with_file: Option<&'a str>,
+}
+
+#[derive(Insertable)]
+#[table_name = "blague"]
+pub struct NewBlague<'a> {
+    pub team_id: &'a str,
+    pub text: &'a str,
 }

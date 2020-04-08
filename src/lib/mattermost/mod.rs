@@ -47,6 +47,7 @@ impl Handler for MattermostWS {
 pub struct Mattermost {
     cfg: Conf,
     user_id: String,
+    debug: bool,
 }
 
 impl Mattermost {
@@ -54,6 +55,7 @@ impl Mattermost {
         Mattermost {
             cfg: cfg,
             user_id: String::new(),
+            debug: false,
         }
     }
 }
@@ -112,14 +114,22 @@ impl Mattermost {
 
     fn response_result(&self, r: reqwest::Result<reqwest::blocking::Response>) -> Result<()> {
         match r {
-            Ok(r) => println!(
-                "{:?} {:?}",
-                r.status(),
-                r.text().unwrap_or(String::from("no text"))
-            ),
+            Ok(r) => {
+                if self.debug {
+                    println!(
+                        "{:?} {:?}",
+                        r.status(),
+                        r.text().unwrap_or(String::from("no text"))
+                    )
+                }
+            }
             Err(e) => println!("{:?}", e),
         };
         Ok(())
+    }
+
+    pub fn toggle_debug(&mut self) {
+        self.debug = !self.debug
     }
 }
 

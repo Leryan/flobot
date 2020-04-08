@@ -19,4 +19,12 @@ table! {
     }
 }
 
+table! {
+    blague (id) {
+        id -> Integer,
+        team_id -> Text,
+        text -> Text,
+    }
+}
+
 allow_tables_to_appear_in_same_query!(edits, trigger,);

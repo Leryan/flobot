@@ -1,6 +1,7 @@
 use crate::client::Client;
 use crate::client::Error as ClientError;
 use crate::handlers::Handler;
+use crate::middleware::Continue;
 use crate::middleware::Error as MiddlewareError;
 use crate::middleware::Middleware;
 use crate::models::{GenericEvent, GenericPost, StatusCode, StatusError};
@@ -16,6 +17,10 @@ pub enum Error {
     Client(ClientError),
     Consumer(String),
     Status(String),
+}
+
+fn client_err(ce: crate::client::Error) -> Error {
+    Error::Client(ce)
 }
 
 impl std::error::Error for Error {}
@@ -44,6 +49,7 @@ pub struct Instance<C: Client> {
     middlewares: Vec<Box<dyn Middleware<C>>>,
     post_handlers: Vec<PostHandler<C>>,
     client: C,
+    helps: std::collections::HashMap<String, String>,
 }
 
 impl<C: Client> Instance<C> {
@@ -52,6 +58,7 @@ impl<C: Client> Instance<C> {
             middlewares: Vec::new(),
             post_handlers: Vec::new(),
             client: client,
+            helps: std::collections::HashMap::new(),
         }
     }
 
@@ -61,6 +68,10 @@ impl<C: Client> Instance<C> {
     }
 
     pub fn add_post_handler(&mut self, handler: PostHandler<C>) -> &mut Self {
+        handler.help().and_then(|help| {
+            self.helps
+                .insert(handler.name().to_string(), help.to_string())
+        });
         self.post_handlers.push(handler);
         self
     }
@@ -70,11 +81,9 @@ impl<C: Client> Instance<C> {
 
         for middleware in self.middlewares.iter_mut() {
             match middleware.process(event, &mut self.client)? {
-                false => {
+                Continue::Yes => continue,
+                Continue::No => {
                     return Ok(None);
-                }
-                true => {
-                    continue;
                 }
             };
         }
@@ -82,27 +91,61 @@ impl<C: Client> Instance<C> {
         Ok(Some(event.clone()))
     }
 
+    fn process_help(&self, post: &GenericPost) -> Result<(), Error> {
+        if post.message.as_str() == "!help" {
+            let mut reply = String::new();
+            let mut keys: Vec<String> = self.helps.keys().map(|v| v.clone()).collect();
+            keys.sort();
+            for key in keys.iter() {
+                reply.push_str(format!("`{}`\n", key).as_str());
+            }
+
+            return self
+                .client
+                .send_reply(post.clone(), reply.as_str())
+                .map_err(client_err);
+        }
+
+        match regex::Regex::new("^!help ([a-zA-Z0-9_-]+).*")
+            .unwrap()
+            .captures(post.message.as_str())
+        {
+            Some(captures) => {
+                let name = captures.get(1).unwrap().as_str();
+                match self.helps.get(name) {
+                    Some(m) => self.client.send_reply(post.clone(), m),
+                    None => self.client.send_reply(post.clone(), "tutétrompé"),
+                }
+                .map_err(client_err)
+            }
+            None => Ok(()),
+        }
+    }
+
+    fn process_event_post(&mut self, post: GenericPost) -> Result<(), Error> {
+        let _ = self.process_help(&post)?;
+        for handler in self.post_handlers.iter_mut() {
+            let res = handler.handle(post.clone(), &self.client);
+            let _ = match res {
+                Ok(_) => {}
+                Err(e) => match self.client.debug(format!("error: {:?}", e).as_str()) {
+                    Ok(_) => {}
+                    Err(e) => println!("debug error: {:?}", e),
+                },
+            };
+        }
+        Ok(())
+    }
+
     fn process_event(&mut self, event: GenericEvent) -> Result<(), Error> {
         match event {
-            GenericEvent::Post(post) => {
-                for handler in self.post_handlers.iter_mut() {
-                    let res = handler.handle(post.clone(), &self.client);
-                    let _ = match res {
-                        Ok(_) => {}
-                        Err(e) => match self.client.debug(format!("error: {:?}", e).as_str()) {
-                            Ok(_) => {}
-                            Err(e) => println!("debug error: {:?}", e),
-                        },
-                    };
-                }
-                Ok(())
-            }
+            GenericEvent::Post(post) => self.process_event_post(post),
             GenericEvent::PostEdited(_edited) => {
                 println!("edits are unsupported for now");
                 Ok(())
             }
-            GenericEvent::Unsupported(unsupported) => {
-                println!("unsupported event: {:?}", unsupported);
+            GenericEvent::Unsupported(_unsupported) => {
+                //println!("unsupported event: {:?}", unsupported);
                 Ok(())
             }
             GenericEvent::Hello(hello) => {

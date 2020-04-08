@@ -31,6 +31,8 @@ pub type Result = std::result::Result<(), Error>;
 
 pub trait Handler<C> {
     type Data;
+    fn name(&self) -> &str;
+    fn help(&self) -> Option<&str>;
     fn handle(&mut self, data: Self::Data, client: &C) -> Result;
 }
 
@@ -49,11 +51,19 @@ impl Debug {
 impl<C: Client> Handler<C> for Debug {
     type Data = GenericPost;
 
+    fn name(&self) -> &str {
+        "debug"
+    }
+    fn help(&self) -> Option<&str> {
+        None
+    }
+
     fn handle(&mut self, data: GenericPost, _client: &C) -> Result {
         println!("handler {:?} -> {:?}", self.name, data);
         Ok(())
     }
 }
 
+pub mod blague;
 pub mod edits;
 pub mod trigger;

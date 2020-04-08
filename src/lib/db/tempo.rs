@@ -1,11 +1,13 @@
+use std::cmp::Eq;
 use std::collections::HashMap;
+use std::hash::Hash;
 use std::ops::Add;
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
 
 #[derive(Clone)]
-pub struct Tempo {
-    store: Arc<Mutex<HashMap<String, Instant>>>,
+pub struct Tempo<T> {
+    store: Arc<Mutex<HashMap<T, Instant>>>,
 }
 
 /// Tempo provides a simple interface to store keys and check for there expiration. No self-cleaning,
@@ -39,22 +41,22 @@ pub struct Tempo {
 /// assert_eq!(true, ctempo.exists("cloned")); // this key is available in the other thread
 /// # }
 /// ```
-impl Tempo {
+impl<T: Hash + Eq> Tempo<T> {
     pub fn new() -> Self {
         Self {
             store: Arc::new(Mutex::new(HashMap::new())),
         }
     }
 
-    pub fn set(&mut self, key: &str, ttl: Duration) {
+    pub fn set(&mut self, key: T, ttl: Duration) {
         let expire_in = Instant::now().add(ttl);
         let mut store = self.store.lock().unwrap();
-        store.insert(key.to_string(), expire_in);
+        store.insert(key, expire_in);
     }
 
-    pub fn exists(&mut self, key: &str) -> bool {
+    pub fn exists(&mut self, key: &T) -> bool {
         let mut store = self.store.lock().unwrap();
-        let res = store.get(key);
+        let res = store.get(&key);
         match res {
             Some(expire_in) => {
                 let now = Instant::now();

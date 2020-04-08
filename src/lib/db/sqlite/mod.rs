@@ -10,5 +10,6 @@ impl Sqlite {
     }
 }
 
+mod sqlite_blague;
 mod sqlite_edits;
 mod sqlite_trigger;

@@ -65,6 +65,12 @@ pub trait Edits {
     fn add_team(&self, team_id: &str, edit: &str, replace: &str) -> Result<()>;
 }
 
+pub trait Blague {
+    fn list(&self, team_id: &str) -> Result<Vec<business_models::Blague>>;
+    fn del(&self, team_id: &str, id: i32) -> Result<()>;
+    fn add(&self, team_id: &str, text: &str) -> Result<()>;
+}
+
 pub fn conn(db_url: &str) -> DatabaseConnection {
     return DatabaseConnection::establish(db_url).expect("db connection");
 }

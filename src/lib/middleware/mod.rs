@@ -8,7 +8,12 @@ pub enum Error {
     Client(String),
 }
 
-type Result = std::result::Result<bool, Error>;
+pub enum Continue {
+    No,
+    Yes,
+}
+
+type Result = std::result::Result<Continue, Error>;
 
 impl From<ClientError> for Error {
     fn from(e: ClientError) -> Self {
@@ -35,7 +40,7 @@ impl Debug {
 impl<C: Client> Middleware<C> for Debug {
     fn process(&mut self, event: &mut GenericEvent, _client: &mut C) -> Result {
         println!("middleware {:?} -> {:?}", self.name, event);
-        Ok(true)
+        Ok(Continue::Yes)
     }
 }
 
@@ -58,17 +63,16 @@ impl<C: Client> Middleware<C> for IgnoreSelf {
                 self.my_user_id = hello.my_user_id.clone();
                 client.set_my_user_id(self.my_user_id.as_str())?;
                 println!("updated my true self {:?}", self.my_user_id);
-                Ok(true)
+                Ok(Continue::Yes)
             }
             GenericEvent::Post(post) => {
                 if post.user_id == self.my_user_id.as_ref() {
-                    println!("my own blood");
-                    Ok(false)
+                    Ok(Continue::No)
                 } else {
-                    Ok(true)
+                    Ok(Continue::Yes)
                 }
             }
-            _ => Ok(true),
+            _ => Ok(Continue::Yes),
         }
     }
 }

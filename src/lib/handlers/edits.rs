@@ -136,6 +136,20 @@ impl<C: Client, E: db::Edits> Edit<C, E> {
 impl<C: Client, E: db::Edits> Handler<C> for Edit<C, E> {
     type Data = GenericPost;
 
+    fn name(&self) -> &str {
+        "edits"
+    }
+    fn help(&self) -> Option<&str> {
+        Some(
+            "```
+!edits list
+!edits add \"edit\" \"replace\"
+!edits del \"edit\"
+!e edit
+```",
+        )
+    }
+
     fn handle(&mut self, data: GenericPost, client: &C) -> Result {
         self.handle_post(data, client)
     }

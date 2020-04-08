@@ -13,12 +13,12 @@ pub struct Trigger<E> {
     match_del: Regex,
     match_text: Regex,
     match_reaction: Regex,
-    tempo: Tempo,
+    tempo: Tempo<String>,
     delay_repeat: Duration,
 }
 
 impl<E: db::Trigger> Trigger<E> {
-    pub fn new(db: Rc<E>, tempo: Tempo, delay_repeat: Duration) -> Self {
+    pub fn new(db: Rc<E>, tempo: Tempo<String>, delay_repeat: Duration) -> Self {
         Self {
             db,
             tempo,
@@ -34,6 +34,20 @@ impl<E: db::Trigger> Trigger<E> {
 
 impl<C: Client, E: db::Trigger> Handler<C> for Trigger<E> {
     type Data = GenericPost;
+
+    fn name(&self) -> &str {
+        "trigger"
+    }
+    fn help(&self) -> Option<&str> {
+        Some(
+            "```
+!trigger list
+!trigger text \"trigger\" \"me\"\
+!trigger reaction \"trigger\" :emoji:
+!trigger del \"trigger\"
+```",
+        )
+    }
 
     fn handle(&mut self, data: GenericPost, client: &C) -> Result {
         let message = data.message.as_str();
@@ -59,13 +73,13 @@ impl<C: Client, E: db::Trigger> Handler<C> for Trigger<E> {
                         );
 
                         // sending this trigger has been delayed
-                        if self.tempo.exists(tempo_key.as_str()) {
-                            self.tempo.set(tempo_key.as_str(), self.delay_repeat);
+                        if self.tempo.exists(&tempo_key) {
+                            self.tempo.set(tempo_key, self.delay_repeat);
                             break;
                         }
 
                         // now, delay this trigger
-                        self.tempo.set(tempo_key.as_str(), self.delay_repeat);
+                        self.tempo.set(tempo_key, self.delay_repeat);
                         client.send_reply(data.clone(), t.text_.unwrap().as_str())?;
                         break;
                     } else {

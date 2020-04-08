@@ -1,0 +1,13 @@
+[Unit]
+Description=FloBot
+StartLimitIntervalSec=0
+
+[Service]
+ExecStart=/home/bot/flobot
+WorkingDirectory=/home/bot/
+Restart=always
+RestartSec=5s
+User=bot
+
+[Install]
+WantedBy=multi-user.target

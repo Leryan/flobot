@@ -112,3 +112,10 @@ pub struct Trigger {
     pub text_: Option<String>,
     pub team_id: String,
 }
+
+#[derive(Debug, Queryable)]
+pub struct Blague {
+    pub id: i32,
+    pub team_id: String,
+    pub text: String,
+}

@@ -14,7 +14,7 @@ test:
 
 .PHONY: run
 run:
-	cargo run
+	RUST_BACKTRACE=1 cargo run
 
 .PHONY: deploy
 deploy:
