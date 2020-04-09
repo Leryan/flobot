@@ -135,6 +135,17 @@ impl Into<GenericStatus> for Status {
     }
 }
 
+#[derive(Deserialize)]
+pub struct Me {
+    pub id: String,
+    pub username: String,
+    pub email: String,
+    pub nickname: String,
+    pub first_name: String,
+    pub last_name: String,
+    pub is_bot: bool,
+}
+
 #[derive(Serialize, Deserialize)]
 #[serde(untagged)]
 pub enum EventData {
@@ -172,7 +183,6 @@ impl Into<GenericEvent> for Event {
         match self.data {
             EventData::Posted(posted) => GenericEvent::Post(posted.into()),
             EventData::Hello(hello) => GenericEvent::Hello(GenericHello {
-                my_user_id: self.broadcast.user_id.clone(),
                 server_string: hello.server_version.clone(),
             }),
             EventData::PostEdited(edited) => GenericEvent::PostEdited(edited.into()),

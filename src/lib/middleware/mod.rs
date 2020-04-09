@@ -10,7 +10,7 @@ pub enum Error {
 
 pub enum Continue {
     No,
-    Yes,
+    Yes(GenericEvent),
 }
 
 type Result = std::result::Result<Continue, Error>;
@@ -22,7 +22,7 @@ impl From<ClientError> for Error {
 }
 
 pub trait Middleware<C: Client> {
-    fn process(&mut self, event: &mut GenericEvent, client: &mut C) -> Result;
+    fn process(&mut self, event: GenericEvent, client: &C) -> Result;
 }
 
 pub struct Debug {
@@ -38,41 +38,33 @@ impl Debug {
 }
 
 impl<C: Client> Middleware<C> for Debug {
-    fn process(&mut self, event: &mut GenericEvent, _client: &mut C) -> Result {
+    fn process(&mut self, event: GenericEvent, _client: &C) -> Result {
         println!("middleware {:?} -> {:?}", self.name, event);
-        Ok(Continue::Yes)
+        Ok(Continue::Yes(event))
     }
 }
 
 pub struct IgnoreSelf {
-    my_user_id: String,
+    my_id: String,
 }
 
 impl IgnoreSelf {
-    pub fn new() -> Self {
-        Self {
-            my_user_id: "".to_string(),
-        }
+    pub fn new(my_id: String) -> Self {
+        Self { my_id }
     }
 }
 
 impl<C: Client> Middleware<C> for IgnoreSelf {
-    fn process(&mut self, event: &mut GenericEvent, client: &mut C) -> Result {
+    fn process(&mut self, event: GenericEvent, _client: &C) -> Result {
         match event {
-            GenericEvent::Hello(hello) => {
-                self.my_user_id = hello.my_user_id.clone();
-                client.set_my_user_id(&self.my_user_id)?;
-                println!("updated my true self {}", self.my_user_id);
-                Ok(Continue::Yes)
-            }
             GenericEvent::Post(post) => {
-                if post.user_id == self.my_user_id {
+                if post.user_id == self.my_id {
                     Ok(Continue::No)
                 } else {
-                    Ok(Continue::Yes)
+                    Ok(Continue::Yes(GenericEvent::Post(post)))
                 }
             }
-            _ => Ok(Continue::Yes),
+            _ => Ok(Continue::Yes(event)),
         }
     }
 }

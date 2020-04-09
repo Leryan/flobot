@@ -10,7 +10,6 @@ pub enum GenericEvent {
 #[derive(Clone, Debug)]
 pub struct GenericHello {
     pub server_string: String,
-    pub my_user_id: String,
 }
 
 #[derive(Clone, Debug)]

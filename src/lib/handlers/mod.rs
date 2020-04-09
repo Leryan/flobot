@@ -7,6 +7,8 @@ use std::convert::From;
 #[derive(Debug)]
 pub enum Error {
     Database(String),
+    Timeout(String),
+    Status(String),
     Other(String),
 }
 
@@ -22,7 +24,10 @@ impl From<db::Error> for Error {
 impl From<ClientError> for Error {
     fn from(e: ClientError) -> Self {
         match e {
-            ClientError::Send(e) => Error::Other(e),
+            ClientError::Timeout(e) => Error::Timeout(e.to_string()),
+            ClientError::Other(e) => Error::Other(e.to_string()),
+            ClientError::Status(e) => Error::Status(e.to_string()),
+            ClientError::Body(e) => Error::Other(e.to_string()),
         }
     }
 }

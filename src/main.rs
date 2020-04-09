@@ -17,6 +17,9 @@ use std::time::Duration;
 fn main() -> std::result::Result<(), Box<dyn std::error::Error>> {
     dotenv::from_filename("flobot.env").ok();
     let cfg = Conf::new().expect("cfg err");
+
+    let mm = Mattermost::new(cfg.clone())?;
+
     let db_url: &str = &cfg.db_url;
 
     let (sender, receiver) = unbounded();
@@ -24,10 +27,9 @@ fn main() -> std::result::Result<(), Box<dyn std::error::Error>> {
 
     {
         let wg = wg.clone();
-        let cfg = cfg.clone();
         thread::spawn(move || {
             println!("launch client thread");
-            Mattermost::new(cfg).listen(sender);
+            mm.listen(sender);
             drop(wg);
         });
     }
@@ -37,16 +39,17 @@ fn main() -> std::result::Result<(), Box<dyn std::error::Error>> {
     db::run_migrations(&conn)?;
 
     println!("launch bot!");
+    let client = Mattermost::new(cfg.clone())?;
     let botdb = Rc::new(dbs::Sqlite::new(conn));
     let tempo = Tempo::new();
-    let ignore_self = Box::new(middleware::IgnoreSelf::new());
+    let ignore_self = middleware::IgnoreSelf::new(client.my_user_id().to_string().clone());
     let trigger =
         handlers::trigger::Trigger::new(Rc::clone(&botdb), tempo.clone(), Duration::from_secs(120));
     let edits = handlers::edits::Edit::new(Rc::clone(&botdb));
     let blague = handlers::blague::Blague::new(Rc::clone(&botdb));
-    Instance::new(Mattermost::new(cfg.clone()))
-        //.add_middleware(Box::new(middleware::Debug::new("debug")))
-        .add_middleware(ignore_self)
+    Instance::new(client)
+        .add_middleware(Box::new(middleware::Debug::new("debug")))
+        .add_middleware(Box::new(ignore_self))
         .add_post_handler(Box::new(trigger))
         .add_post_handler(Box::new(edits))
         .add_post_handler(Box::new(blague))

@@ -1,20 +1,31 @@
 use crate::models::*;
 use crossbeam::crossbeam_channel::Sender;
+use std::fmt::Formatter;
 
 #[derive(Debug)]
 pub enum Error {
-    Send(String),
+    Status(String),
+    Timeout(String),
+    Body(String),
+    Other(String),
+}
+
+impl std::error::Error for Error {}
+
+impl std::fmt::Display for Error {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(f, "Chat Client error: {:?}", self)
+    }
 }
 
 pub type Result<T> = std::result::Result<T, Error>;
 
 pub trait EventClient {
     fn listen(&self, sender: Sender<GenericEvent>);
-    fn client(&self) -> Box<dyn Client>;
 }
 
 pub trait Client {
-    fn set_my_user_id(&mut self, user_id: &str) -> Result<()>;
+    fn my_user_id(&self) -> &str;
     fn send_post(&self, post: GenericPost) -> Result<()>;
     fn send_reaction(&self, post: GenericPost, reaction: &str) -> Result<()>;
     fn send_reply(&self, post: GenericPost, message: &str) -> Result<()>;
