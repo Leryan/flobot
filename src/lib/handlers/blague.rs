@@ -72,7 +72,7 @@ impl<C: Client, S: DBBlague> Handler<C> for Blague<S> {
 
         if msg == "!blague" {
             let mut blagues = self.store.list(&data.team_id)?;
-            let mut r = self.rng.gen_range(0, blagues.len() + 1);
+            let mut r = self.rng.gen_range(0, blagues.len() * 2);
             if r > blagues.len() - 1 {
                 match self.rand_blague()? {
                     Some(t) => {
