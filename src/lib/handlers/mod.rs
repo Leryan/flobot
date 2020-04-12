@@ -12,6 +12,20 @@ pub enum Error {
     Other(String),
 }
 
+impl From<reqwest::Error> for Error {
+    fn from(e: reqwest::Error) -> Self {
+        if e.is_timeout() {
+            return Error::Timeout(e.to_string());
+        }
+
+        if e.is_status() {
+            return Error::Status(e.to_string());
+        }
+
+        Error::Other(e.to_string())
+    }
+}
+
 impl From<db::Error> for Error {
     fn from(e: db::Error) -> Self {
         match e {

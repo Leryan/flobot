@@ -1,11 +1,13 @@
-use super::{Handler, Result};
+use super::{Error, Handler, Result};
 use crate::client::Client;
 use crate::db::Blague as DBBlague;
+use crate::models::Blague as MBlague;
 use crate::models::GenericPost;
 use rand;
 use rand::Rng;
 use regex::Regex;
 use std::rc::Rc;
+use std::str::from_utf8;
 
 pub struct Blague<S> {
     match_del: Regex,
@@ -21,6 +23,30 @@ impl<S: DBBlague> Blague<S> {
             store,
             rng: rand::thread_rng(),
         }
+    }
+
+    fn rand_blague(&self) -> std::result::Result<Option<String>, Error> {
+        let c = reqwest::blocking::Client::new();
+        let r = c
+            .get("https://random-ize.com/bad-jokes/bad-jokes-f.php")
+            .header("Referer", "https://random-ize.com/bad-jokes/")
+            .timeout(std::time::Duration::from_secs(2))
+            .send()?
+            .bytes()?;
+        let s = from_utf8(r.as_ref()).unwrap();
+        match Regex::new(".*<font.*>(.*)<br><br>(.*)</font>.*")
+            .unwrap()
+            .captures(s)
+        {
+            Some(captures) => {
+                return Ok(Some(format!(
+                    "{}\n\n{}",
+                    captures.get(1).unwrap().as_str(),
+                    captures.get(2).unwrap().as_str()
+                )));
+            }
+            None => return Ok(None),
+        };
     }
 }
 
@@ -45,13 +71,22 @@ impl<C: Client, S: DBBlague> Handler<C> for Blague<S> {
         let msg: &str = &data.message;
 
         if msg == "!blague" {
-            let blagues = self.store.list(&data.team_id)?;
-            if blagues.len() < 1 {
-                return Ok(client.send_message(data, "faut d’abord en créer")?);
-            }
+            let mut blagues = self.store.list(&data.team_id)?;
             let mut r = self.rng.gen_range(0, blagues.len());
             if r > blagues.len() - 1 {
-                r = r - 1;
+                match self.rand_blague()? {
+                    Some(t) => {
+                        self.store.add(&data.team_id, &t)?;
+                        let b = MBlague {
+                            id: -1,
+                            team_id: "".to_string(),
+                            text: t,
+                        };
+                        blagues.push(b);
+                        r = blagues.len() - 1;
+                    }
+                    None => {}
+                };
             }
             match blagues.get(r) {
                 Some(blague) => return Ok(client.send_message(data, &blague.text)?),
