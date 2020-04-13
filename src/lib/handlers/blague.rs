@@ -76,7 +76,7 @@ impl<C: Client, S: DBBlague> Handler<C> for Blague<S> {
             if r > blagues.len() - 1 {
                 match self.rand_blague()? {
                     Some(t) => {
-                        self.store.add(&data.team_id, &t)?;
+                        let _ = self.store.add(&data.team_id, &t);
                         let b = MBlague {
                             id: -1,
                             team_id: "".to_string(),
