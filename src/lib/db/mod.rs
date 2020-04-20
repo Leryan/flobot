@@ -5,6 +5,7 @@ use std::convert::From;
 
 use crate::models as business_models;
 
+pub mod remote;
 pub mod tempo;
 
 #[cfg(feature = "sqlite")]
@@ -66,6 +67,9 @@ pub trait Edits {
 }
 
 pub trait Blague {
+    // with 0 <= relnum < count()
+    fn pick(&self, team_id: &str, relnum: u64) -> Result<Option<business_models::Blague>>;
+    fn count(&self, team_id: &str) -> Result<u64>;
     fn list(&self, team_id: &str) -> Result<Vec<business_models::Blague>>;
     fn del(&self, team_id: &str, id: i32) -> Result<()>;
     fn add(&self, team_id: &str, text: &str) -> Result<()>;

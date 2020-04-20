@@ -46,7 +46,14 @@ fn main() -> std::result::Result<(), Box<dyn std::error::Error>> {
     let trigger =
         handlers::trigger::Trigger::new(Rc::clone(&botdb), tempo.clone(), Duration::from_secs(120));
     let edits = handlers::edits::Edit::new(Rc::clone(&botdb));
-    let blague = handlers::blague::Blague::new(Rc::clone(&botdb));
+    let remote_blague = db::remote::blague::BadJokes::new();
+    let remote_sqlite = db::remote::blague::Sqlite::new(rand::thread_rng(), Rc::clone(&botdb));
+    let rnd_blague = db::remote::blague::Select::new(
+        rand::thread_rng(),
+        Box::new(remote_blague),
+        Box::new(remote_sqlite),
+    );
+    let blague = handlers::blague::Blague::new(Rc::clone(&botdb), rnd_blague);
     Instance::new(client)
         .add_middleware(Box::new(middleware::Debug::new("debug")))
         .add_middleware(Box::new(ignore_self))

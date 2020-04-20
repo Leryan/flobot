@@ -5,6 +5,25 @@ use crate::models::Blague;
 use diesel::prelude::*;
 
 impl crate::db::Blague for super::Sqlite {
+    fn pick(&self, team_id: &str, relnum: u64) -> Result<Option<Blague>> {
+        let filter = table::blague
+            .filter(table::team_id.eq(team_id))
+            .offset(relnum as i64);
+        match filter.first(&self.db) {
+            Ok(b) => Ok(Some(b)),
+            Err(e) => match e {
+                diesel::result::Error::NotFound => Ok(None),
+                _ => Err(e.into()),
+            },
+        }
+    }
+
+    fn count(&self, team_id: &str) -> Result<u64> {
+        let filter = table::blague.filter(table::team_id.eq(team_id));
+        let res: i64 = filter.select(diesel::dsl::count_star()).first(&self.db)?;
+        Ok(res as u64)
+    }
+
     fn list(&self, team_id: &str) -> Result<Vec<Blague>> {
         return Ok(table::blague
             .filter(table::team_id.eq(team_id))
