@@ -1,5 +1,4 @@
-use crate::client::Client;
-use crate::client::Error as ClientError;
+use crate::client;
 use crate::db;
 use crate::models::GenericPost;
 use std::convert::From;
@@ -35,24 +34,24 @@ impl From<db::Error> for Error {
     }
 }
 
-impl From<ClientError> for Error {
-    fn from(e: ClientError) -> Self {
+impl From<client::Error> for Error {
+    fn from(e: client::Error) -> Self {
         match e {
-            ClientError::Timeout(e) => Error::Timeout(e.to_string()),
-            ClientError::Other(e) => Error::Other(e.to_string()),
-            ClientError::Status(e) => Error::Status(e.to_string()),
-            ClientError::Body(e) => Error::Other(e.to_string()),
+            client::Error::Timeout(e) => Error::Timeout(e.to_string()),
+            client::Error::Other(e) => Error::Other(e.to_string()),
+            client::Error::Status(e) => Error::Status(e.to_string()),
+            client::Error::Body(e) => Error::Other(e.to_string()),
         }
     }
 }
 
 pub type Result = std::result::Result<(), Error>;
 
-pub trait Handler<C> {
+pub trait Handler {
     type Data;
     fn name(&self) -> &str;
     fn help(&self) -> Option<&str>;
-    fn handle(&mut self, data: Self::Data, client: &C) -> Result;
+    fn handle(&mut self, data: Self::Data) -> Result;
 }
 
 pub struct Debug {
@@ -67,7 +66,7 @@ impl Debug {
     }
 }
 
-impl<C: Client> Handler<C> for Debug {
+impl Handler for Debug {
     type Data = GenericPost;
 
     fn name(&self) -> &str {
@@ -77,7 +76,7 @@ impl<C: Client> Handler<C> for Debug {
         None
     }
 
-    fn handle(&mut self, data: GenericPost, _client: &C) -> Result {
+    fn handle(&mut self, data: GenericPost) -> Result {
         println!("handler {:?} -> {:?}", self.name, data);
         Ok(())
     }

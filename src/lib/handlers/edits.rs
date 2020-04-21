@@ -1,4 +1,4 @@
-use crate::client::Client;
+use crate::client;
 use crate::db;
 use crate::handlers::{Handler, Result};
 use crate::models::GenericPost;
@@ -11,31 +11,36 @@ pub struct Edit<C, E> {
     match_del: Regex,
     match_add: Regex,
     match_edit: Regex,
-    phantom: std::marker::PhantomData<C>,
+    client: Rc<C>,
     db: Rc<E>,
 }
 
-impl<C: Client, E: db::Edits> Edit<C, E> {
-    pub fn new(db: Rc<E>) -> Self {
+impl<C, E> Edit<C, E>
+where
+    C: client::Sender,
+    E: db::Edits,
+{
+    pub fn new(db: Rc<E>, client: Rc<C>) -> Self {
         Self {
             match_list: Regex::new("^!edits list.*$").unwrap(),
             match_del: Regex::new("^!edits del \"(.+)\".*").unwrap(),
             match_add: Regex::new("^!edits add \"(.+)\" \"(.+)\".*").unwrap(),
             match_edit: Regex::new("^!e (.+)").unwrap(),
-            phantom: std::marker::PhantomData,
             db,
+            client,
         }
     }
 
-    fn handle_edit(&self, post: GenericPost, client: &C, captured: &str) -> Result {
+    fn handle_edit(&self, post: GenericPost, captured: &str) -> Result {
         let res = self.db.find(&post.user_id, &post.team_id, captured)?;
 
         match res {
             Some(edit) => {
                 if edit.replace_with_text.is_some() {
-                    client.edit_post_message(&post.id, &edit.replace_with_text.unwrap())?;
+                    self.client
+                        .edit(&post.id, &edit.replace_with_text.unwrap())?;
                 } else if edit.replace_with_file.is_some() {
-                    client.unimplemented(post)?;
+                    // unimplemented
                 }
             }
             _ => {}
@@ -44,29 +49,31 @@ impl<C: Client, E: db::Edits> Edit<C, E> {
         Ok(())
     }
 
-    fn handle_del_team(&self, post: GenericPost, client: &C, captured: &str) -> Result {
+    fn handle_del_team(&self, post: GenericPost, captured: &str) -> Result {
         let _ = self.db.del_team(&post.team_id, captured)?;
-        Ok(client.send_reaction(post, "ok_hand")?)
+        Ok(self.client.reaction(post, "ok_hand")?)
     }
 
-    fn handle_add(&self, post: GenericPost, client: &C, word: &str, replace: &str) -> Result {
+    fn handle_add(&self, post: GenericPost, word: &str, replace: &str) -> Result {
         if word == replace {
-            return Ok(client.send_reply(post, "aha, aha… il est boubourse :3")?);
+            return Ok(self.client.reply(post, "aha, aha… il est boubourse :3")?);
         }
 
         if post.team_id == "" {
-            return Ok(client.send_reply(post, "je sais pas encore faire des edits privés :/")?);
+            return Ok(self
+                .client
+                .reply(post, "je sais pas encore faire des edits privés :/")?);
         }
 
         let _ = self.db.add_team(&post.team_id, word, replace)?;
-        Ok(client.send_reaction(post, "ok_hand")?)
+        Ok(self.client.reaction(post, "ok_hand")?)
     }
 
-    fn handle_list(&self, post: GenericPost, client: &C) -> Result {
+    fn handle_list(&self, post: GenericPost) -> Result {
         let res = self.db.list(&post.team_id)?;
 
         if res.len() == 0 {
-            return Ok(client.send_reply(post, "yen a pô :GE:")?);
+            return Ok(self.client.reply(post, "yen a pô :GE:")?);
         }
 
         let mut out = String::from("Remplacements disponibles:\n");
@@ -78,15 +85,15 @@ impl<C: Client, E: db::Edits> Edit<C, E> {
             ));
         }
 
-        Ok(client.send_reply(post, &out)?)
+        Ok(self.client.reply(post, &out)?)
     }
 
-    fn handle_post(&self, post: GenericPost, client: &C) -> Result {
+    fn handle_post(&self, post: GenericPost) -> Result {
         let message = post.message.clone();
 
         match self.match_edit.captures(&message) {
             Some(captures) => {
-                return self.handle_edit(post, client, captures.get(1).unwrap().as_str());
+                return self.handle_edit(post, captures.get(1).unwrap().as_str());
             }
             None => {}
         };
@@ -95,7 +102,6 @@ impl<C: Client, E: db::Edits> Edit<C, E> {
             Some(captures) => {
                 return self.handle_add(
                     post,
-                    client,
                     captures.get(1).unwrap().as_str(),
                     captures.get(2).unwrap().as_str(),
                 );
@@ -104,13 +110,13 @@ impl<C: Client, E: db::Edits> Edit<C, E> {
         };
 
         match self.match_list.captures(&message) {
-            Some(_captures) => return self.handle_list(post, client),
+            Some(_captures) => return self.handle_list(post),
             None => {}
         };
 
         match self.match_del.captures(&message) {
             Some(captures) => {
-                return self.handle_del_team(post, client, captures.get(1).unwrap().as_str());
+                return self.handle_del_team(post, captures.get(1).unwrap().as_str());
             }
             None => {}
         };
@@ -119,7 +125,11 @@ impl<C: Client, E: db::Edits> Edit<C, E> {
     }
 }
 
-impl<C: Client, E: db::Edits> Handler<C> for Edit<C, E> {
+impl<C, E> Handler for Edit<C, E>
+where
+    C: client::Sender,
+    E: db::Edits,
+{
     type Data = GenericPost;
 
     fn name(&self) -> &str {
@@ -136,7 +146,7 @@ impl<C: Client, E: db::Edits> Handler<C> for Edit<C, E> {
         )
     }
 
-    fn handle(&mut self, data: GenericPost, client: &C) -> Result {
-        self.handle_post(data, client)
+    fn handle(&mut self, data: GenericPost) -> Result {
+        self.handle_post(data)
     }
 }

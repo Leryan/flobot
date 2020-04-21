@@ -1,5 +1,5 @@
 use crate::models::*;
-use crossbeam::crossbeam_channel::Sender;
+use crossbeam::crossbeam_channel::Sender as ChannelSender;
 use std::fmt::Formatter;
 
 #[derive(Debug)]
@@ -21,18 +21,24 @@ impl std::fmt::Display for Error {
 pub type Result<T> = std::result::Result<T, Error>;
 
 pub trait EventClient {
-    fn listen(&self, sender: Sender<GenericEvent>);
+    fn listen(&self, sender: ChannelSender<GenericEvent>);
 }
 
-pub trait Client {
+pub trait Sender {
+    fn post(&self, post: GenericPost) -> Result<()>;
+    fn send_trigger_list(&self, triggers: Vec<Trigger>, from: GenericPost) -> Result<()>; // FIXME: generic pagination instead
+    fn reaction(&self, post: GenericPost, reaction: &str) -> Result<()>;
+    fn reply(&self, post: GenericPost, message: &str) -> Result<()>;
+    fn message(&self, from: GenericPost, message: &str) -> Result<()>;
+    fn edit(&self, post_id: &str, message: &str) -> Result<()>;
+}
+
+pub trait Getter {
     fn my_user_id(&self) -> &str;
-    fn send_post(&self, post: GenericPost) -> Result<()>;
-    fn send_reaction(&self, post: GenericPost, reaction: &str) -> Result<()>;
-    fn send_reply(&self, post: GenericPost, message: &str) -> Result<()>;
-    fn send_message(&self, from: GenericPost, message: &str) -> Result<()>;
-    fn send_trigger_list(&self, triggers: Vec<Trigger>, from: GenericPost) -> Result<()>;
-    fn edit_post_message(&self, post_id: &str, message: &str) -> Result<()>;
-    fn notify_startup(&self) -> Result<()>;
-    fn unimplemented(&self, post: GenericPost) -> Result<()>;
+}
+
+pub trait Notifier {
+    fn startup(&self) -> Result<()>;
     fn debug(&self, message: &str) -> Result<()>;
+    fn error(&self, message: &str) -> Result<()>;
 }

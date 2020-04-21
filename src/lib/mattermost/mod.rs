@@ -5,7 +5,7 @@ use crate::conf::Conf;
 use crate::mattermost::models::Me as MMMe;
 use crate::mattermost::models::*;
 use crate::models::*;
-use crossbeam::crossbeam_channel::Sender;
+use crossbeam::crossbeam_channel::Sender as ChannelSender;
 use reqwest;
 use serde::Serialize;
 use serde_json::json;
@@ -16,7 +16,7 @@ use ws::{connect, CloseCode, Handler, Handshake, Message};
 
 struct MattermostWS {
     out: WSSender,
-    send: Sender<GenericEvent>,
+    send: ChannelSender<GenericEvent>,
     token: String,
     seq: u64,
 }
@@ -47,7 +47,7 @@ impl Handler for MattermostWS {
 }
 
 impl EventClient for Mattermost {
-    fn listen(&self, sender: Sender<GenericEvent>) {
+    fn listen(&self, sender: ChannelSender<GenericEvent>) {
         let mut url = self.cfg.ws_url.clone();
         url.push_str("/api/v4/websocket");
         connect(url, |out| MattermostWS {
@@ -134,8 +134,8 @@ impl Mattermost {
     }
 }
 
-impl Client for Mattermost {
-    fn send_post(&self, post: GenericPost) -> Result<()> {
+impl Sender for Mattermost {
+    fn post(&self, post: GenericPost) -> Result<()> {
         let mmpost = Post {
             channel_id: post.channel_id.clone(),
             create_at: 0,
@@ -156,12 +156,12 @@ impl Client for Mattermost {
         Ok(())
     }
 
-    fn send_message(&self, mut post: GenericPost, message: &str) -> Result<()> {
+    fn message(&self, mut post: GenericPost, message: &str) -> Result<()> {
         post.message = message.to_string();
-        self.send_post(post)
+        self.post(post)
     }
 
-    fn send_reaction(&self, post: GenericPost, reaction: &str) -> Result<()> {
+    fn reaction(&self, post: GenericPost, reaction: &str) -> Result<()> {
         let reaction = Reaction {
             user_id: self.me.id.clone(),
             post_id: post.id.clone(),
@@ -175,7 +175,7 @@ impl Client for Mattermost {
         Ok(())
     }
 
-    fn send_reply(&self, post: GenericPost, message: &str) -> Result<()> {
+    fn reply(&self, post: GenericPost, message: &str) -> Result<()> {
         let mmpost = Post {
             channel_id: post.channel_id.clone(),
             create_at: 0,
@@ -192,6 +192,20 @@ impl Client for Mattermost {
             .post(&self.url("/posts"))
             .bearer_auth(&self.cfg.token)
             .json(&mmpost)
+            .send()?;
+        Ok(())
+    }
+
+    fn edit(&self, post_id: &str, message: &str) -> Result<()> {
+        let edit = PostEdit {
+            message: Some(message),
+            file_ids: None,
+        };
+
+        self.client
+            .put(&self.url(&format!("/posts/{}/patch", post_id)))
+            .bearer_auth(&self.cfg.token)
+            .json(&edit)
             .send()?;
         Ok(())
     }
@@ -217,49 +231,39 @@ impl Client for Mattermost {
             }
 
             if count == 20 {
-                self.send_message(from.clone(), &l)?;
+                self.message(from.clone(), &l)?;
                 count = 0;
                 l = String::new();
             }
         }
 
         if count > 0 {
-            self.send_message(from, &l)?;
+            self.message(from, &l)?;
         }
 
         Ok(())
     }
+}
 
-    fn notify_startup(&self) -> Result<()> {
+impl Notifier for Mattermost {
+    fn startup(&self) -> Result<()> {
         let mut post = GenericPost::with_message("jsuilà");
         post.channel_id = self.cfg.debug_channel.clone();
-        self.send_post(post)
-    }
-
-    fn edit_post_message(&self, post_id: &str, message: &str) -> Result<()> {
-        let edit = PostEdit {
-            message: Some(message),
-            file_ids: None,
-        };
-
-        self.client
-            .put(&self.url(&format!("/posts/{}/patch", post_id)))
-            .bearer_auth(&self.cfg.token)
-            .json(&edit)
-            .send()?;
-        Ok(())
-    }
-
-    fn unimplemented(&self, post: GenericPost) -> Result<()> {
-        self.send_reply(post, "spô encore prêt chéri·e :3 :trollface:")
+        self.post(post)
     }
 
     fn debug(&self, message: &str) -> Result<()> {
         let mut post = GenericPost::with_message(message);
         post.channel_id = self.cfg.debug_channel.clone();
-        self.send_post(post)
+        self.post(post)
     }
 
+    fn error(&self, message: &str) -> Result<()> {
+        self.debug(message)
+    }
+}
+
+impl Getter for Mattermost {
     fn my_user_id(&self) -> &str {
         &self.me.id
     }

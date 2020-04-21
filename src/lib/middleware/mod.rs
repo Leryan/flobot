@@ -1,5 +1,4 @@
-use crate::client::Client;
-use crate::client::Error as ClientError;
+use crate::client;
 use crate::models::GenericEvent;
 use std::convert::From;
 
@@ -15,14 +14,14 @@ pub enum Continue {
 
 type Result = std::result::Result<Continue, Error>;
 
-impl From<ClientError> for Error {
-    fn from(e: ClientError) -> Self {
+impl From<client::Error> for Error {
+    fn from(e: client::Error) -> Self {
         Self::Client(format!("{:?}", e))
     }
 }
 
-pub trait Middleware<C: Client> {
-    fn process(&mut self, event: GenericEvent, client: &C) -> Result;
+pub trait Middleware {
+    fn process(&mut self, event: GenericEvent) -> Result;
 }
 
 pub struct Debug {
@@ -37,8 +36,8 @@ impl Debug {
     }
 }
 
-impl<C: Client> Middleware<C> for Debug {
-    fn process(&mut self, event: GenericEvent, _client: &C) -> Result {
+impl Middleware for Debug {
+    fn process(&mut self, event: GenericEvent) -> Result {
         println!("middleware {:?} -> {:?}", self.name, event);
         Ok(Continue::Yes(event))
     }
@@ -54,8 +53,8 @@ impl IgnoreSelf {
     }
 }
 
-impl<C: Client> Middleware<C> for IgnoreSelf {
-    fn process(&mut self, event: GenericEvent, _client: &C) -> Result {
+impl Middleware for IgnoreSelf {
+    fn process(&mut self, event: GenericEvent) -> Result {
         match event {
             GenericEvent::Post(post) => {
                 if post.user_id == self.my_id {

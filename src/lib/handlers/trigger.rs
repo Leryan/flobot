@@ -1,4 +1,4 @@
-use crate::client::Client;
+use crate::client;
 use crate::db;
 use crate::db::tempo::Tempo;
 use crate::handlers::{Handler, Result};
@@ -7,8 +7,9 @@ use regex::Regex;
 use std::rc::Rc;
 use std::time::Duration;
 
-pub struct Trigger<E> {
+pub struct Trigger<C, E> {
     db: Rc<E>,
+    client: Rc<C>,
     match_list: Regex,
     match_del: Regex,
     match_text: Regex,
@@ -17,10 +18,11 @@ pub struct Trigger<E> {
     delay_repeat: Duration,
 }
 
-impl<E: db::Trigger> Trigger<E> {
-    pub fn new(db: Rc<E>, tempo: Tempo<String>, delay_repeat: Duration) -> Self {
+impl<C, E> Trigger<C, E> {
+    pub fn new(db: Rc<E>, client: Rc<C>, tempo: Tempo<String>, delay_repeat: Duration) -> Self {
         Self {
             db,
+            client,
             tempo,
             delay_repeat,
             match_list: Regex::new("^!trigger list.*$").unwrap(),
@@ -32,7 +34,11 @@ impl<E: db::Trigger> Trigger<E> {
     }
 }
 
-impl<C: Client, E: db::Trigger> Handler<C> for Trigger<E> {
+impl<C, E> Handler for Trigger<C, E>
+where
+    C: client::Sender,
+    E: db::Trigger,
+{
     type Data = GenericPost;
 
     fn name(&self) -> &str {
@@ -49,7 +55,7 @@ impl<C: Client, E: db::Trigger> Handler<C> for Trigger<E> {
         )
     }
 
-    fn handle(&mut self, data: GenericPost, client: &C) -> Result {
+    fn handle(&mut self, data: GenericPost) -> Result {
         let message: &str = &data.message;
 
         if !message.starts_with("!trigger ") {
@@ -75,10 +81,10 @@ impl<C: Client, E: db::Trigger> Handler<C> for Trigger<E> {
 
                         // now, delay this trigger
                         self.tempo.set(tempo_key.clone(), self.delay_repeat);
-                        client.send_reply(data, &t.text_.unwrap())?;
+                        self.client.reply(data, &t.text_.unwrap())?;
                         break;
                     } else {
-                        client.send_reaction(data.clone(), &t.emoji.unwrap())?;
+                        self.client.reaction(data.clone(), &t.emoji.unwrap())?;
                     }
                 }
             }
@@ -87,7 +93,7 @@ impl<C: Client, E: db::Trigger> Handler<C> for Trigger<E> {
 
         if self.match_list.is_match(message) {
             let res = self.db.list(&data.team_id)?;
-            return Ok(client.send_trigger_list(res, data)?);
+            return Ok(self.client.send_trigger_list(res, data)?);
         }
 
         match self.match_text.captures(message) {
@@ -97,7 +103,7 @@ impl<C: Client, E: db::Trigger> Handler<C> for Trigger<E> {
                     captures.get(1).unwrap().as_str(),
                     captures.get(2).unwrap().as_str(),
                 );
-                return Ok(client.send_reaction(data, "ok_hand")?);
+                return Ok(self.client.reaction(data, "ok_hand")?);
             }
             None => {}
         }
@@ -109,7 +115,7 @@ impl<C: Client, E: db::Trigger> Handler<C> for Trigger<E> {
                     captures.get(1).unwrap().as_str(),
                     captures.get(2).unwrap().as_str(),
                 );
-                return Ok(client.send_reaction(data, "ok_hand")?);
+                return Ok(self.client.reaction(data, "ok_hand")?);
             }
             None => {}
         }
@@ -118,7 +124,7 @@ impl<C: Client, E: db::Trigger> Handler<C> for Trigger<E> {
                 let _ = self
                     .db
                     .del(&data.team_id, captures.get(1).unwrap().as_str())?;
-                return Ok(client.send_reaction(data, "ok_hand")?);
+                return Ok(self.client.reaction(data, "ok_hand")?);
             }
             None => {}
         }

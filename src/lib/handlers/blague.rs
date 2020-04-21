@@ -1,5 +1,5 @@
 use super::{Handler, Result};
-use crate::client::Client;
+use crate::client;
 use crate::db::remote;
 use crate::db::Blague as DBBlague;
 use crate::models::GenericPost;
@@ -18,24 +18,31 @@ impl From<remote::Error> for crate::handlers::Error {
     }
 }
 
-pub struct Blague<R, S> {
+pub struct Blague<R, S, C> {
     match_del: Regex,
     store: Rc<S>,
     remote: R,
+    client: Rc<C>,
 }
 
-impl<R, S: DBBlague> Blague<R, S> {
-    pub fn new(store: Rc<S>, remote: R) -> Self {
+impl<R, S, C> Blague<R, S, C> {
+    pub fn new(store: Rc<S>, remote: R, client: Rc<C>) -> Self {
         Blague {
             match_del: Regex::new(r"^!blague del (.*)")
                 .expect("cannot compile blague match del regex"),
             store,
             remote,
+            client,
         }
     }
 }
 
-impl<R: remote::Blague, C: Client, S: DBBlague> Handler<C> for Blague<R, S> {
+impl<R, C, S> Handler for Blague<R, S, C>
+where
+    C: client::Sender,
+    S: DBBlague,
+    R: remote::Blague,
+{
     type Data = GenericPost;
 
     fn name(&self) -> &str {
@@ -52,12 +59,12 @@ impl<R: remote::Blague, C: Client, S: DBBlague> Handler<C> for Blague<R, S> {
         )
     }
 
-    fn handle(&mut self, data: GenericPost, client: &C) -> Result {
+    fn handle(&mut self, data: GenericPost) -> Result {
         let msg: &str = &data.message;
 
         if msg == "!blague" {
             let blague = self.remote.random(&data.team_id)?;
-            return Ok(client.send_message(data, &blague)?);
+            return Ok(self.client.message(data, &blague)?);
         } else if msg == "!blague list" {
             let blagues = self.store.list(&data.team_id)?;
             let mut rep = String::from("Liste des blagounettes enregistrées à la meuson:\n");
@@ -65,7 +72,7 @@ impl<R: remote::Blague, C: Client, S: DBBlague> Handler<C> for Blague<R, S> {
                 rep.push_str(&format!(" * {}: {}\n", blague.id, &blague.text));
             }
 
-            return Ok(client.send_message(data, &rep)?);
+            return Ok(self.client.message(data, &rep)?);
         }
 
         match self.match_del.captures(msg) {
@@ -73,9 +80,9 @@ impl<R: remote::Blague, C: Client, S: DBBlague> Handler<C> for Blague<R, S> {
                 match captures.get(1).unwrap().as_str().trim().parse() {
                     Ok(num) => {
                         self.store.del(&data.team_id, num)?;
-                        return Ok(client.send_reaction(data, "ok_hand")?);
+                        return Ok(self.client.reaction(data, "ok_hand")?);
                     }
-                    Err(e) => return Ok(client.send_reply(data, &format!("beurk: {:?}", e))?),
+                    Err(e) => return Ok(self.client.reply(data, &format!("beurk: {:?}", e))?),
                 };
             }
             None => {}
@@ -85,14 +92,15 @@ impl<R: remote::Blague, C: Client, S: DBBlague> Handler<C> for Blague<R, S> {
             match msg.splitn(2, " ").collect::<Vec<&str>>().get(1) {
                 Some(blague) => {
                     if blague.len() > 300 {
-                        return Ok(client
-                            .send_reply(data, "la blague est trop longue. max 300 caractères")?);
+                        return Ok(self
+                            .client
+                            .reply(data, "la blague est trop longue. max 300 caractères")?);
                     }
                     self.store.add(&data.team_id, blague)?;
-                    return Ok(client.send_reaction(data, "ok_hand")?);
+                    return Ok(self.client.reaction(data, "ok_hand")?);
                 }
                 None => {
-                    return Ok(client.send_reply(data, "t’as des gros doigts papa")?);
+                    return Ok(self.client.reply(data, "t’as des gros doigts papa")?);
                 }
             }
         }

@@ -1,5 +1,4 @@
-use crate::client::Client;
-use crate::client::Error as ClientError;
+use crate::client;
 use crate::handlers::Handler;
 use crate::middleware::Continue;
 use crate::middleware::Error as MiddlewareError;
@@ -7,19 +6,21 @@ use crate::middleware::Middleware;
 use crate::models::{GenericEvent, GenericPost, StatusCode, StatusError};
 use crossbeam::crossbeam_channel::{Receiver, RecvTimeoutError};
 use std::convert::From;
+use std::rc::Rc;
 use std::time::Duration;
 
 #[derive(Debug)]
 pub enum Error {
+    // FIXME: strip down to Fatal and Error
     Other(String),
     Middleware(MiddlewareError),
     Processing(String),
-    Client(ClientError),
+    Client(client::Error),
     Consumer(String),
     Status(String),
 }
 
-fn client_err(ce: crate::client::Error) -> Error {
+fn client_err(ce: client::Error) -> Error {
     Error::Client(ce)
 }
 
@@ -31,8 +32,8 @@ impl std::fmt::Display for Error {
     }
 }
 
-impl From<ClientError> for Error {
-    fn from(e: ClientError) -> Self {
+impl From<client::Error> for Error {
+    fn from(e: client::Error) -> Self {
         Error::Client(e)
     }
 }
@@ -43,31 +44,31 @@ impl From<MiddlewareError> for Error {
     }
 }
 
-pub type PostHandler<C> = Box<dyn Handler<C, Data = GenericPost>>;
+pub type PostHandler = Box<dyn Handler<Data = GenericPost>>;
 
-pub struct Instance<C: Client> {
-    middlewares: Vec<Box<dyn Middleware<C>>>,
-    post_handlers: Vec<PostHandler<C>>,
-    client: C,
+pub struct Instance<C> {
+    middlewares: Vec<Box<dyn Middleware>>,
+    post_handlers: Vec<PostHandler>,
     helps: std::collections::HashMap<String, String>,
+    client: Rc<C>,
 }
 
-impl<C: Client> Instance<C> {
-    pub fn new(client: C) -> Self {
+impl<C: client::Sender + client::Notifier> Instance<C> {
+    pub fn new(client: Rc<C>) -> Self {
         Instance {
             middlewares: Vec::new(),
             post_handlers: Vec::new(),
-            client: client,
             helps: std::collections::HashMap::new(),
+            client,
         }
     }
 
-    pub fn add_middleware(&mut self, middleware: Box<dyn Middleware<C>>) -> &mut Self {
+    pub fn add_middleware(&mut self, middleware: Box<dyn Middleware>) -> &mut Self {
         self.middlewares.push(middleware);
         self
     }
 
-    pub fn add_post_handler(&mut self, handler: PostHandler<C>) -> &mut Self {
+    pub fn add_post_handler(&mut self, handler: PostHandler) -> &mut Self {
         handler.help().and_then(|help| {
             self.helps
                 .insert(handler.name().to_string(), help.to_string())
@@ -79,7 +80,7 @@ impl<C: Client> Instance<C> {
     fn process_middlewares(&mut self, event: GenericEvent) -> Result<Option<GenericEvent>, Error> {
         let mut event = event;
         for middleware in self.middlewares.iter_mut() {
-            match middleware.process(event, &self.client)? {
+            match middleware.process(event)? {
                 Continue::Yes(nevent) => {
                     event = nevent;
                 }
@@ -101,10 +102,7 @@ impl<C: Client> Instance<C> {
                 reply.push_str(&format!("`{}`\n", key));
             }
 
-            return self
-                .client
-                .send_reply(post.clone(), &reply)
-                .map_err(client_err);
+            return self.client.reply(post.clone(), &reply).map_err(client_err);
         }
 
         match regex::Regex::new("^!help ([a-zA-Z0-9_-]+).*")
@@ -114,8 +112,8 @@ impl<C: Client> Instance<C> {
             Some(captures) => {
                 let name = captures.get(1).unwrap().as_str();
                 match self.helps.get(name) {
-                    Some(m) => self.client.send_reply(post.clone(), m),
-                    None => self.client.send_reply(post.clone(), "tutétrompé"),
+                    Some(m) => self.client.reply(post.clone(), m),
+                    None => self.client.reply(post.clone(), "tutétrompé"),
                 }
                 .map_err(client_err)
             }
@@ -126,7 +124,7 @@ impl<C: Client> Instance<C> {
     fn process_event_post(&mut self, post: GenericPost) -> Result<(), Error> {
         let _ = self.process_help(&post)?;
         for handler in self.post_handlers.iter_mut() {
-            let res = handler.handle(post.clone(), &self.client);
+            let res = handler.handle(post.clone());
             let _ = match res {
                 Ok(_) => {}
                 Err(e) => match self.client.debug(&format!("error: {:?}", e)) {
@@ -178,7 +176,7 @@ impl<C: Client> Instance<C> {
     }
 
     pub fn run(&mut self, receiver: Receiver<GenericEvent>) -> Result<(), Error> {
-        let _ = self.client.notify_startup()?;
+        let _ = self.client.startup()?;
         loop {
             match receiver.recv_timeout(Duration::from_secs(5)) {
                 Ok(e) => {
