@@ -59,6 +59,12 @@ where
         let message: &str = &data.message;
 
         if !message.starts_with("!trigger ") {
+            let tempo_rate = format!("{}{}--rate-limit", &data.team_id, &data.channel_id);
+            if self.tempo.exists(tempo_rate.clone()) {
+                return Ok(());
+            } else {
+                self.tempo.set(tempo_rate.clone(), Duration::from_secs(3));
+            }
             let res = self.db.search(&data.team_id)?;
             for t in res {
                 let tb = &t.triggered_by;
@@ -70,19 +76,18 @@ where
                     || message.ends_with(tb_end)
                     || message == t.triggered_by
                 {
-                    if t.text_.is_some() {
-                        let tempo_key = format!("{}{}{}", &data.team_id, &data.channel_id, tb);
+                    let tempo_key = format!("{}{}{}", &data.team_id, &data.channel_id, tb);
 
-                        // sending this trigger has been delayed
-                        if self.tempo.exists(tempo_key.clone()) {
-                            self.tempo.set(tempo_key.clone(), self.delay_repeat);
-                            break;
-                        }
-
-                        // now, delay this trigger
+                    // sending this trigger has been delayed
+                    if self.tempo.exists(tempo_key.clone()) {
                         self.tempo.set(tempo_key.clone(), self.delay_repeat);
+                        continue;
+                    }
+                    self.tempo.set(tempo_key.clone(), self.delay_repeat);
+
+                    if t.text_.is_some() {
                         self.client.reply(data, &t.text_.unwrap())?;
-                        break;
+                        break; // text is sorted after emoji, so we can break here: emoji were already processed.
                     } else {
                         self.client.reaction(data.clone(), &t.emoji.unwrap())?;
                     }
