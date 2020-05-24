@@ -9,7 +9,7 @@ impl crate::db::Edits for super::Sqlite {
         return Ok(table::edits
             .filter(table::team_id.eq(team_id))
             .order_by(table::user_id) // user edits first, then team
-            .limit(1)
+            .order_by(table::edit)
             .load::<models::Edit>(&self.db)?);
     }
 
