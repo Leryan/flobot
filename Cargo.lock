@@ -240,7 +240,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 
 [[package]]
 name = "flobot"
-version = "0.2.0"
+version = "0.2.2"
 dependencies = [
  "crossbeam 0.7.3 (registry+https://github.com/rust-lang/crates.io-index)",
  "diesel 1.4.4 (registry+https://github.com/rust-lang/crates.io-index)",

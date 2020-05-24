@@ -1,6 +1,6 @@
 [package]
 name = "flobot"
-version = "0.2.1"
+version = "0.2.2"
 authors = ["Florent Peterschmitt <florent@peterschmitt.fr>"]
 edition = "2018"
 

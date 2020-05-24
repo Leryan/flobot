@@ -79,7 +79,7 @@ where
         let mut out = String::from("Remplacements disponibles:\n");
         for edit_ in res {
             out.push_str(&format!(
-                " * `{}` -> {}",
+                " * `{}` -> {}\n",
                 edit_.edit,
                 edit_.replace_with_text.unwrap_or("".to_string())
             ));
