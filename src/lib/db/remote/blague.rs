@@ -43,7 +43,7 @@ where
     fn random(&mut self, team_id: &str) -> Result {
         let l = self.remotes.len();
         self.remotes
-            .get_mut(self.rng.gen_range(0, l)) // [0, l) [incl, excl)
+            .get_mut(self.rng.gen_range(0..l)) // [0, l) [incl, excl)
             .unwrap()
             .random(team_id)
     }
@@ -74,7 +74,7 @@ where
 {
     fn random(&mut self, team_id: &str) -> Result {
         let l = self.db.count(team_id)?;
-        let blague = self.db.pick(team_id, self.rng.gen_range(0, l))?;
+        let blague = self.db.pick(team_id, self.rng.gen_range(0..l))?;
         match blague {
             Some(b) => Ok(b.text),
             None => Err(Error::NoData("cannot find that joke".to_string())),
