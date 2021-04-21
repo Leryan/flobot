@@ -24,7 +24,7 @@ pub enum Error {
 impl std::error::Error for Error {}
 
 impl std::fmt::Display for Error {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         match self {
             Error::Migration(e) => write!(f, "Cannot run migrations: {}", e),
             Error::Database(e) => write!(f, "db::Error: {}", e),

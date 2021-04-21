@@ -27,7 +27,7 @@ fn client_err(ce: client::Error) -> Error {
 impl std::error::Error for Error {}
 
 impl std::fmt::Display for Error {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         write!(f, "Instance got a fatal error: {:?}", self)
     }
 }
