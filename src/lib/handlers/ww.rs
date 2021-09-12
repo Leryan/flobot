@@ -6,7 +6,7 @@ use regex::Regex;
 use std::cell::RefCell;
 use std::rc::Rc;
 
-const MIN_NUM_PLAYERS: usize = 2;
+const MIN_NUM_PLAYERS: usize = 3;
 
 #[derive(Hash, Eq, PartialEq, Debug, Clone)]
 enum WWPlayerKind {
@@ -377,14 +377,19 @@ Vous découvrez de qui il s'agissait : **{:?}**", p.username, p.kind);
         let mut all = vec![];
         let mut ww = vec![];
 
+        let totp = self.players.borrow().len();
+
         {
             // ASSIGN PLAYERS
             let mut pidx = 0;
             let mut ps = self.players.borrow_mut();
             ps[pidx].kind = WWPlayerKind::Werewolf;
 
-            if MIN_NUM_PLAYERS >= 8 {
+            if totp >= 5 {
                 ps[pidx + 1].kind = WWPlayerKind::Werewolf;
+            }
+
+            if totp >= 8 {
                 ps[pidx + 2].kind = WWPlayerKind::Werewolf;
                 if ps.len() > 10 {
                     pidx = pidx - 1;
