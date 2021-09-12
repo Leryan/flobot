@@ -10,11 +10,21 @@ use flobot::handlers;
 use flobot::instance::Instance;
 use flobot::mattermost::Mattermost;
 use flobot::middleware;
+use std::env;
 use std::rc::Rc;
 use std::thread;
 use std::time::Duration;
 
 fn main() -> std::result::Result<(), Box<dyn std::error::Error>> {
+    let cli_args: Vec<String> = env::args().collect();
+    let mut flag_debug = false;
+    println!("Launched with command line arguments: {:?}", cli_args);
+    for cli_arg in cli_args {
+        if cli_arg.eq("--debug") {
+            flag_debug = true;
+        }
+    }
+
     dotenv::from_filename("flobot.env").ok();
     let cfg = Conf::new().expect("cfg err");
 
@@ -61,14 +71,18 @@ fn main() -> std::result::Result<(), Box<dyn std::error::Error>> {
     let ww = handlers::ww::WW::new(Rc::clone(&client));
 
     println!("launch bot!");
-    Instance::new(Rc::clone(&client))
-        .add_middleware(Box::new(middleware::Debug::new("debug")))
-        .add_middleware(Box::new(ignore_self))
-        .add_post_handler(Box::new(trigger))
-        .add_post_handler(Box::new(edits))
-        .add_post_handler(Box::new(blague))
-        .add_post_handler(Box::new(ww))
-        .run(receiver.clone())?;
+    let client = Rc::clone(&client);
+    let mut instance = Instance::new(client);
+    instance.add_middleware(Box::new(ignore_self));
+    instance.add_post_handler(Box::new(trigger));
+    instance.add_post_handler(Box::new(edits));
+    instance.add_post_handler(Box::new(blague));
+    instance.add_post_handler(Box::new(ww));
+
+    if flag_debug {
+        instance.add_middleware(Box::new(middleware::Debug::new("debug")));
+    }
+    instance.run(receiver.clone())?;
 
     drop(botdb);
     println!("waiting for listener to stop");
