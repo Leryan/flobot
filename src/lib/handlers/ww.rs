@@ -590,7 +590,7 @@ where
             if message.contains("stop_game_now") {
                 self.players.borrow_mut().clear();
                 self.started = false;
-                self.client.reply(data, "Jeu arrêté. Pwet")?;
+                self.client.reply(data, "Jeu arrêté.")?;
             } else if !self.started {
                 self.handle_no_game_started(data)?;
             } else {
