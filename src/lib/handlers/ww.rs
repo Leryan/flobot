@@ -90,16 +90,34 @@ impl<C> WW<C> {
             }
         }
     }
+    */
 
-    fn player_is(&self, user_id: &str, kind: WWPlayerKind) -> bool {
+    fn check_player(
+        &self,
+        user_id: &str,
+        kind: Option<WWPlayerKind>,
+        status: Option<WWPlayerStatus>,
+    ) -> bool {
         for p in self.players.borrow_mut().iter() {
-            if p.id == user_id && p.kind == kind {
-                return true;
+            if p.id == user_id {
+                let mut is = true;
+                match kind {
+                    Some(k) => {
+                        is = is && (p.kind == k);
+                    }
+                    None => {}
+                }
+                match status {
+                    Some(s) => {
+                        is = is && (p.status == s);
+                    }
+                    None => {}
+                };
+                return is;
             }
         }
         false
     }
-    */
 
     fn game_has(&self, kind: WWPlayerKind) -> bool {
         for p in self.players.borrow().iter() {
@@ -160,6 +178,7 @@ where
 
     fn handle_game_started(&mut self, data: GenericPost) -> handlers::Result {
         let msg = data.message.clone();
+        let player_id = data.user_id.clone();
         let votereg = Regex::new(r"^!ww[\s]+vote[\s]+[@]?([\S]+).*$").unwrap();
         let mut loop_again = false;
 
@@ -198,6 +217,15 @@ where
             WWStepKind::VoteOracle => {
                 for caps in votereg.captures_iter(msg.as_str()) {
                     let choosen = self.player_by_username(caps.get(1).unwrap().as_str());
+
+                    // skip if player isn't the oracle
+                    if !self.check_player(
+                        player_id.as_str(),
+                        Some(WWPlayerKind::Oracle),
+                        Some(WWPlayerStatus::Awake),
+                    ) {
+                        return Ok(());
+                    }
 
                     match choosen {
                         Some(p) => {
@@ -242,6 +270,14 @@ Choisissez un de ces villageoi: {}
                 for caps in votereg.captures_iter(msg.as_str()) {
                     let choosen = self.player_by_username(caps.get(1).unwrap().as_str());
 
+                    if !self.check_player(
+                        player_id.as_str(),
+                        Some(WWPlayerKind::Werewolf),
+                        Some(WWPlayerStatus::Awake),
+                    ) {
+                        return Ok(());
+                    }
+
                     match choosen {
                         Some(p) => {
                             if p.kind == WWPlayerKind::Werewolf {
@@ -285,7 +321,8 @@ Rendez-vous sur la place du village, et votez !
 
 **Attention**
 
-* Le vote doit se faire par la personne ayant créée la partie : `!ww vote username`
+* **Concertez-vous avant de voter !**
+* Le vote doit se faire par **une** personne, vivante : `!ww vote username`
 * Les candidats possibles sont : {}
 
 
@@ -299,23 +336,27 @@ Choisissez convenablement !
                 loop_again = true;
             }
             WWStepKind::Vote => {
-                if data.user_id == self.game_owner.clone().unwrap() {
-                    for caps in votereg.captures_iter(msg.as_str()) {
-                        let choosen = self.player_by_username(caps.get(1).unwrap().as_str());
+                if !self.check_player(player_id.as_str(), None, Some(WWPlayerStatus::Awake)) {
+                    return Ok(());
+                }
+                for caps in votereg.captures_iter(msg.as_str()) {
+                    let choosen = self.player_by_username(caps.get(1).unwrap().as_str());
 
-                        match choosen {
-                            Some(p) => {
-                                self.set_player_dead(p.id.as_str());
-                                let msg = format!("@{} meurt d'une balle dans le dos… son corps s'écroule par terre.
+                    match choosen {
+                        Some(p) => {
+                            self.set_player_dead(p.id.as_str());
+                            let msg = format!(
+                                "@{} meurt d'une balle dans le dos… son corps s'écroule par terre.
 
-Vous découvrez de qui il s'agissait : **{:?}**", p.username, p.kind);
-                                self.post_all(GenericPost::with_message(msg.as_str()))?;
-                                self.step = WWStepKind::Nightfall;
-                                loop_again = true;
-                            }
-                            None => {}
-                        };
-                    }
+Vous découvrez de qui il s'agissait : **{:?}**",
+                                p.username, p.kind
+                            );
+                            self.post_all(GenericPost::with_message(msg.as_str()))?;
+                            self.step = WWStepKind::Nightfall;
+                            loop_again = true;
+                        }
+                        None => {}
+                    };
                 }
             }
         };
@@ -547,6 +588,7 @@ where
 
         if message.starts_with("!ww ") {
             if message.contains("stop_game_now") {
+                self.players.borrow_mut().clear();
                 self.started = false;
                 self.client.reply(data, "Jeu arrêté.")?;
             } else if !self.started {
