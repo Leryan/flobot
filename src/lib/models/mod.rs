@@ -75,6 +75,12 @@ pub struct StatusError {
     pub status_code: i32,
 }
 
+pub struct GenericUser {
+    pub id: String,
+    pub username: String,
+    pub display_name: String,
+}
+
 pub struct Me {
     pub id: String,
 }

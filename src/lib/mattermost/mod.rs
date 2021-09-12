@@ -7,9 +7,10 @@ use crate::mattermost::models::*;
 use crate::models::*;
 use crossbeam::crossbeam_channel::Sender as ChannelSender;
 use reqwest;
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use serde_json::json;
 use std::convert::From;
+use uuid::Uuid;
 use ws::Result as WSResult;
 use ws::Sender as WSSender;
 use ws::{connect, CloseCode, Handler, Handshake, Message};
@@ -80,11 +81,33 @@ struct Post<'a> {
     parent_id: Option<String>,
 }
 
+#[derive(Debug, Serialize)]
+struct CreateChannel<'a> {
+    team_id: &'a str,
+    name: &'a str,
+    display_name: &'a str,
+    #[serde(rename = "type")]
+    type_: &'a str,
+}
+
 #[derive(Serialize)]
 struct Reaction {
     user_id: String,
     post_id: String,
     emoji_name: String,
+}
+
+#[derive(Deserialize, Debug)]
+struct GenericID {
+    id: String,
+    status_code: Option<usize>,
+    message: Option<String>,
+    request_id: Option<String>,
+}
+
+#[derive(Serialize)]
+struct UserID {
+    user_id: String,
 }
 
 impl From<reqwest::Error> for Error {
@@ -131,6 +154,50 @@ impl Mattermost {
         let mut url = self.cfg.api_url.clone();
         url.push_str(add);
         url
+    }
+}
+
+impl Channel for Mattermost {
+    fn create_private(&self, team_id: &str, name: &str, users: &Vec<String>) -> Result<String> {
+        let mut enc_buf = Uuid::encode_buffer();
+        let uuid = Uuid::new_v4().to_simple().encode_lower(&mut enc_buf);
+        let channel_name = format!("{}-{}", name, uuid).to_lowercase().clone();
+        let mmchannel = CreateChannel {
+            team_id: team_id,
+            name: channel_name.as_str(),
+            display_name: name,
+            type_: "P",
+        };
+
+        let r: GenericID = self
+            .client
+            .post(&self.url("/channels"))
+            .bearer_auth(&self.cfg.token)
+            .json(&mmchannel)
+            .send()?
+            .json()?;
+
+        for user_id in users.iter() {
+            let uid = UserID {
+                user_id: user_id.clone(),
+            };
+            self.client
+                .post(&self.url(format!("/channels/{}/members", r.id).as_str()))
+                .bearer_auth(&self.cfg.token)
+                .json(&uid)
+                .send()?;
+        }
+
+        Ok(r.id)
+    }
+
+    fn archive_channel(&self, channel_id: &str) -> Result<()> {
+        self.client
+            .delete(&self.url(format!("/channels/{}", channel_id).as_str()))
+            .bearer_auth(&self.cfg.token)
+            .send()?;
+
+        Ok(())
     }
 }
 
@@ -266,5 +333,23 @@ impl Notifier for Mattermost {
 impl Getter for Mattermost {
     fn my_user_id(&self) -> &str {
         &self.me.id
+    }
+
+    fn users_by_ids(&self, ids: Vec<&str>) -> Result<Vec<GenericUser>> {
+        let r = self
+            .client
+            .post(self.url("/users/ids"))
+            .bearer_auth(&self.cfg.token)
+            .json(&ids)
+            .send()?;
+
+        let users: Vec<User> = r.json()?;
+
+        let mut fusers: Vec<GenericUser> = vec![];
+        for u in users.iter() {
+            fusers.push((*u).clone().into());
+        }
+
+        Ok(fusers)
     }
 }

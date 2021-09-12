@@ -58,6 +58,7 @@ fn main() -> std::result::Result<(), Box<dyn std::error::Error>> {
         Box::new(remote_sqlite),
     );
     let blague = handlers::blague::Blague::new(Rc::clone(&botdb), rnd_blague, Rc::clone(&client));
+    let ww = handlers::ww::WW::new(Rc::clone(&client));
 
     println!("launch bot!");
     Instance::new(Rc::clone(&client))
@@ -66,6 +67,7 @@ fn main() -> std::result::Result<(), Box<dyn std::error::Error>> {
         .add_post_handler(Box::new(trigger))
         .add_post_handler(Box::new(edits))
         .add_post_handler(Box::new(blague))
+        .add_post_handler(Box::new(ww))
         .run(receiver.clone())?;
 
     drop(botdb);

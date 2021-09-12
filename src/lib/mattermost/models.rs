@@ -3,7 +3,7 @@ use crate::models::GenericPostEdited;
 use crate::models::GenericStatus;
 use crate::models::StatusCode;
 use crate::models::StatusError as GenericStatusError;
-use crate::models::{GenericEvent, GenericHello};
+use crate::models::{GenericEvent, GenericHello, GenericUser};
 use serde::{Deserialize, Serialize};
 use std::convert::Into;
 
@@ -37,6 +37,12 @@ struct Post {
     root_id: String,
     parent_id: String,
     original_id: String,
+}
+
+#[derive(Clone, Deserialize)]
+pub struct User {
+    id: String,
+    username: String,
 }
 
 #[derive(Deserialize, Serialize)]
@@ -81,6 +87,16 @@ impl Into<GenericPostEdited> for PostEdited {
             channel_id: post.channel_id.clone(),
             parent_id: post.parent_id.clone(),
             root_id: post.root_id.clone(),
+        }
+    }
+}
+
+impl Into<GenericUser> for User {
+    fn into(self) -> GenericUser {
+        GenericUser {
+            id: self.id,
+            display_name: self.username.clone(),
+            username: self.username.clone(),
         }
     }
 }
