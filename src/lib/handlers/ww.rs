@@ -315,9 +315,7 @@ Choisissez un de ces villageoi: {}
 
 Malheureusement, @{} est mort !
 
-Mais QUI a bien pu faire ça ?
-
-Rendez-vous sur la place du village, et votez !
+Rendez-vous sur la place du village pour tenter de tirer tout ça au clair.
 
 **Attention**
 
@@ -380,12 +378,14 @@ Vous découvrez de qui il s'agissait : **{:?}**",
                 self.post_all(GenericPost::with_message("## Endgame !"))?;
 
                 if !has_normal {
-                    self.post_all(GenericPost::with_message("Les loups-garous ont gagnés !"))?;
+                    self.post_all(GenericPost::with_message(
+                        "Tous les villageois sont morts, les loups-garous ont gagnés ! Bravo !",
+                    ))?;
                 }
 
                 if !has_ww {
                     self.post_all(GenericPost::with_message(
-                        "Tous les loups-garous sont morts ! Bravo !",
+                        "Tous les loups-garous sont morts, les villageois ont gagnés ! Bravo !",
                     ))?;
                 }
 
