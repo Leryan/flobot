@@ -13,8 +13,6 @@ enum WWPlayerKind {
     Villager,
     Werewolf,
     Oracle,
-    //Hunter,
-    //Witche,
 }
 
 #[derive(Debug, Eq, PartialEq, Clone)]
@@ -40,8 +38,6 @@ enum WWStepKind {
     VoteOracle,
     WakeWerewolfs,
     VoteWerewolfs,
-    /*WakeWitche,
-    VoteWitche,*/
     NewDay,
     Vote,
 }
@@ -81,16 +77,6 @@ impl<C> WW<C> {
             }
         }
     }
-
-    /*
-    fn set_player_alive(&self, user_id: &str) {
-        for p in self.players.borrow_mut().iter_mut() {
-            if p.id == user_id {
-                p.status = WWPlayerStatus::Awake;
-            }
-        }
-    }
-    */
 
     fn check_player(
         &self,
