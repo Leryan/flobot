@@ -1,4 +1,12 @@
 table! {
+    blague (id) {
+        id -> Integer,
+        team_id -> Text,
+        text -> Text,
+    }
+}
+
+table! {
     edits (id) {
         id -> Integer,
         edit -> Text,
@@ -6,6 +14,27 @@ table! {
         user_id -> Nullable<Text>,
         replace_with_text -> Nullable<Text>,
         replace_with_file -> Nullable<Text>,
+    }
+}
+
+table! {
+    sms_contact (id) {
+        id -> Integer,
+        team_id -> Text,
+        name -> Text,
+        number -> Text,
+        last_sending_unixts -> BigInt,
+    }
+}
+
+table! {
+    sms_prepare (id) {
+        id -> Integer,
+        team_id -> Text,
+        sms_contact_id -> Integer,
+        trigname -> Text,
+        name -> Text,
+        text -> Text,
     }
 }
 
@@ -19,12 +48,6 @@ table! {
     }
 }
 
-table! {
-    blague (id) {
-        id -> Integer,
-        team_id -> Text,
-        text -> Text,
-    }
-}
+joinable!(sms_prepare -> sms_contact (sms_contact_id));
 
-allow_tables_to_appear_in_same_query!(edits, trigger,);
+allow_tables_to_appear_in_same_query!(blague, edits, sms_contact, sms_prepare, trigger,);

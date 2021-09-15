@@ -1,5 +1,7 @@
 use crossbeam::crossbeam_channel::unbounded;
 use crossbeam::sync::WaitGroup;
+#[macro_use]
+extern crate diesel_migrations;
 use dotenv;
 use flobot::client::*;
 use flobot::conf::Conf;
@@ -14,6 +16,8 @@ use std::env;
 use std::rc::Rc;
 use std::thread;
 use std::time::Duration;
+
+embed_migrations!();
 
 fn main() -> std::result::Result<(), Box<dyn std::error::Error>> {
     let cli_args: Vec<String> = env::args().collect();
@@ -46,7 +50,7 @@ fn main() -> std::result::Result<(), Box<dyn std::error::Error>> {
 
     println!("run db migrations");
     let conn = db::conn(db_url);
-    db::run_migrations(&conn)?;
+    embedded_migrations::run(&conn)?;
 
     println!("init client, db, handler, middleware...");
     let client = Rc::new(Mattermost::new(cfg.clone())?);
@@ -69,6 +73,15 @@ fn main() -> std::result::Result<(), Box<dyn std::error::Error>> {
     );
     let blague = handlers::blague::Blague::new(Rc::clone(&botdb), rnd_blague, Rc::clone(&client));
     let ww = handlers::ww::WW::new(Rc::clone(&client));
+    let smsprov = handlers::sms::Octopush::new(
+        env::var("BOT_OCTOPUSH_LOGIN")
+            .unwrap_or("".to_string())
+            .as_str(),
+        env::var("BOT_OCTOPUSH_APIKEY")
+            .unwrap_or("".to_string())
+            .as_str(),
+    );
+    let sms = handlers::sms::SMS::new(smsprov, Rc::clone(&botdb), Rc::clone(&client));
 
     println!("launch bot!");
     let client = Rc::clone(&client);
@@ -78,6 +91,7 @@ fn main() -> std::result::Result<(), Box<dyn std::error::Error>> {
     instance.add_post_handler(Box::new(edits));
     instance.add_post_handler(Box::new(blague));
     instance.add_post_handler(Box::new(ww));
+    instance.add_post_handler(Box::new(sms));
 
     if flag_debug {
         instance.add_middleware(Box::new(middleware::Debug::new("debug")));

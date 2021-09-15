@@ -124,3 +124,22 @@ pub struct Blague {
     pub team_id: String,
     pub text: String,
 }
+
+#[derive(Debug, Queryable)]
+pub struct SMSContact {
+    pub id: i32,
+    pub team_id: String,
+    pub name: String,
+    pub number: String,
+    pub last_sending_unixts: i64,
+}
+
+#[derive(Debug, Queryable)]
+pub struct SMSPrepare {
+    pub id: i32,
+    pub team_id: String,
+    pub contact_id: i32,
+    pub trigname: String,
+    pub name: String,
+    pub text: String,
+}

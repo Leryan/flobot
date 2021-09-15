@@ -12,4 +12,5 @@ impl Sqlite {
 
 mod sqlite_blague;
 mod sqlite_edits;
+mod sqlite_sms;
 mod sqlite_trigger;

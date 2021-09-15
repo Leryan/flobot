@@ -1,6 +1,5 @@
 pub mod models;
 use diesel::Connection;
-use diesel_migrations;
 use std::convert::From;
 
 use crate::models as business_models;
@@ -75,11 +74,36 @@ pub trait Blague {
     fn add(&self, team_id: &str, text: &str) -> Result<()>;
 }
 
-pub fn conn(db_url: &str) -> DatabaseConnection {
-    return DatabaseConnection::establish(db_url).expect("db connection");
+pub trait SMS {
+    fn set_contact(
+        &self,
+        team_id: &str,
+        name: &str,
+        number: &str,
+    ) -> Result<business_models::SMSContact>;
+    fn set_prepare(
+        &self,
+        team_id: &str,
+        contact_id: &i32,
+        trigname: &str,
+        name: &str,
+        text: &str,
+    ) -> Result<business_models::SMSPrepare>;
+    fn get_contact(
+        &self,
+        team_id: &str,
+        name: Option<&str>,
+        id: Option<&i32>,
+    ) -> Result<Option<business_models::SMSContact>>;
+    fn get_prepare(
+        &self,
+        team_id: &str,
+        trigname: &str,
+    ) -> Result<Option<business_models::SMSPrepare>>;
+    fn list_contacts(&self, team_id: &str) -> Result<Vec<business_models::SMSContact>>;
+    fn list_prepare(&self, team_id: &str) -> Result<Vec<business_models::SMSPrepare>>;
 }
 
-pub fn run_migrations(conn: &DatabaseConnection) -> Result<()> {
-    let _ = diesel_migrations::run_pending_migrations(conn)?;
-    Ok(())
+pub fn conn(db_url: &str) -> DatabaseConnection {
+    return DatabaseConnection::establish(db_url).expect("db connection");
 }
