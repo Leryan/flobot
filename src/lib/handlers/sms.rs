@@ -131,6 +131,8 @@ impl<S: SMSSender, D: db::SMS, C: client::Sender> Handler for SMS<S, D, C> {
  * Le contenu des SMS n'est **pas** privé : je peux le voir dans la console de gestion. Ne vous en servez pas pour transmettre des infos privées.
  * Les numéros sont limités à la france et le préfixe `+33` est à mettre manuellement.
 
+Voici comment procéder pour utiliser la fonctionnalité :
+
 ```
 # Enregistrer un numéro associé à un nom/pseudo/ce que vous voulez.
 !sms register <contact:[a-zA-Z0-9]+> <numéro>
@@ -139,12 +141,14 @@ impl<S: SMSSender, D: db::SMS, C: client::Sender> Handler for SMS<S, D, C> {
 # Pour modifier un trigger, suffit de refaire la même commande mais avec un nom et/ou texte différent.
 !sms prepare <trigname> <contact> <intitulé> <text>
 
-# Faire un [ou plusieurs envois]
-!sms <trigname> [<trigname> <trigname>...]
+# Faire un envoi préparé
+!sms <trigname>
 
 # Lister les contacts et trigs
 !sms list
 ```
+
+Pour chaque commande réussie, le bot ajoutera l'emoji :ok_hand: sur le message de commande.
 
 Exemple :
 
