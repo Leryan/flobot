@@ -124,9 +124,12 @@ impl<S: SMSSender, D: db::SMS, C: client::Sender> Handler for SMS<S, D, C> {
     }
 
     fn help(&self) -> Option<&str> {
-        Some("Envoyer des sms. **Pour un usage raisonné.**
+        Some("Envoyer des sms.
 
-Les numéros sont limités à la france et le préfixe `+33` est à mettre manuellement.
+ * **Pour un usage raisonné et responsable.** Oui c'est cliché mais le contenu des messages devient ma responsabilité :)
+ * Le service a un coût, actuellement 21€ TTC pour 300 SMS à utiliser sur 1 an.
+ * Le contenu des SMS n'est **pas** privé : je peux le voir dans la console de gestion. Ne vous en servez pas pour transmettre des infos privées.
+ * Les numéros sont limités à la france et le préfixe `+33` est à mettre manuellement.
 
 ```
 # Enregistrer un numéro associé à un nom/pseudo/ce que vous voulez.
