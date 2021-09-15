@@ -48,13 +48,13 @@ impl<T: Hash + Eq> Tempo<T> {
         }
     }
 
-    pub fn set(&mut self, key: T, ttl: Duration) {
+    pub fn set(&self, key: T, ttl: Duration) {
         let expire_in = Instant::now().add(ttl);
         let mut store = self.store.lock().unwrap();
         store.insert(key, expire_in);
     }
 
-    pub fn exists(&mut self, key: T) -> bool {
+    pub fn exists(&self, key: T) -> bool {
         let mut store = self.store.lock().unwrap();
         let res = store.get(&key);
         match res {

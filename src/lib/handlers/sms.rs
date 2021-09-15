@@ -169,10 +169,9 @@ Exemple :
 ")
     }
 
-    fn handle(&mut self, data: GenericPost) -> Result {
-        let dc = data.clone();
-        let msg = data.message.as_str();
-        let tid = data.team_id.as_str();
+    fn handle(&self, post: &GenericPost) -> Result {
+        let msg = post.message.as_str();
+        let tid = post.team_id.as_str();
 
         if !msg.starts_with("!sms ") {
             return Ok(());
@@ -193,7 +192,7 @@ Exemple :
                     .as_str(),
                 );
             }
-            self.client.reply(data, msg.as_str())?;
+            self.client.reply(post, msg.as_str())?;
         } else if let Some(m) = self.re_send.captures(msg) {
             let trigname = m.get(1).unwrap();
             let prepare = self.db.get_prepare(tid, trigname.as_str())?;
@@ -206,12 +205,12 @@ Exemple :
                         contact.number.as_str(),
                         prepare.name.as_str(),
                     ) {
-                        self.client.reaction(data, "no_entry_sign")?;
+                        self.client.reaction(post, "no_entry_sign")?;
                         return Err(e.into());
                     }
                 }
             } else {
-                self.client.reaction(data, ":question:")?;
+                self.client.reaction(post, "question")?;
             }
         } else if let Some(m) = self.re_sendn.captures(msg) {
             let contact_name = m.get(1).unwrap().as_str();
@@ -220,12 +219,12 @@ Exemple :
 
             if let Some(contact) = self.db.get_contact(tid, Some(contact_name), None)? {
                 if let Err(e) = self.provider.send(text, contact.number.as_str(), name) {
-                    self.client.reaction(data, "no_entry_sign")?;
+                    self.client.reaction(post, "no_entry_sign")?;
                     return Err(e.into());
                 }
             } else {
                 let msg = format!("Pô trouvé {}", contact_name);
-                self.client.reply(data, msg.as_str())?;
+                self.client.reply(post, msg.as_str())?;
             }
         } else if let Some(m) = self.re_register.captures(msg) {
             let name = m.get(1).unwrap().as_str();
@@ -242,14 +241,14 @@ Exemple :
                     .set_prepare(tid, &contact.id, trigname, name, text)?;
             } else {
                 let msg = format!("Pô trouvé {}", contact_name);
-                self.client.reply(data, msg.as_str())?;
+                self.client.reply(post, msg.as_str())?;
             }
         } else {
-            self.client.reply(data, "L'a pô compris.")?;
+            self.client.reply(post, "L'a pô compris.")?;
             return Ok(());
         }
 
-        self.client.reaction(dc, "ok_hand")?;
+        self.client.reaction(post, "ok_hand")?;
 
         Ok(())
     }

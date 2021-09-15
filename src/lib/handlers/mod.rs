@@ -51,7 +51,7 @@ pub trait Handler {
     type Data;
     fn name(&self) -> &str;
     fn help(&self) -> Option<&str>;
-    fn handle(&mut self, data: Self::Data) -> Result;
+    fn handle(&self, data: &Self::Data) -> Result;
 }
 
 pub struct Debug {
@@ -76,8 +76,8 @@ impl Handler for Debug {
         None
     }
 
-    fn handle(&mut self, data: GenericPost) -> Result {
-        println!("handler {:?} -> {:?}", self.name, data);
+    fn handle(&self, post: &GenericPost) -> Result {
+        println!("handler {:?} -> {:?}", self.name, post);
         Ok(())
     }
 }

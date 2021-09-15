@@ -2,6 +2,7 @@ use super::Blague;
 use super::Error;
 use super::Result;
 use regex::Regex;
+use std::cell::RefCell;
 use std::convert::From;
 use std::rc::Rc;
 use std::str::from_utf8;
@@ -15,19 +16,16 @@ impl From<crate::db::Error> for super::Error {
     }
 }
 
-pub struct Select<R>
-where
-    R: rand::Rng,
-{
+pub struct Select<R> {
     remotes: Vec<Box<dyn Blague>>,
-    rng: R,
+    rng: RefCell<R>,
 }
 
 impl<R: rand::Rng> Select<R> {
     pub fn new(rng: R, first: Box<dyn Blague>, second: Box<dyn Blague>) -> Self {
         Self {
             remotes: vec![first, second],
-            rng,
+            rng: RefCell::new(rng),
         }
     }
 
@@ -40,10 +38,10 @@ impl<R> Blague for Select<R>
 where
     R: rand::Rng,
 {
-    fn random(&mut self, team_id: &str) -> Result {
+    fn random(&self, team_id: &str) -> Result {
         let l = self.remotes.len();
         self.remotes
-            .get_mut(self.rng.gen_range(0..l)) // [0, l) [incl, excl)
+            .get(self.rng.borrow_mut().gen_range(0..l)) // [0, l) [incl, excl)
             .unwrap()
             .random(team_id)
     }
@@ -54,7 +52,7 @@ where
     R: rand::Rng,
 {
     db: Rc<D>,
-    rng: R,
+    rng: RefCell<R>,
 }
 
 impl<R, D> Sqlite<R, D>
@@ -63,7 +61,10 @@ where
     D: crate::db::Blague,
 {
     pub fn new(rng: R, db: Rc<D>) -> Self {
-        Self { db, rng }
+        Self {
+            db,
+            rng: RefCell::new(rng),
+        }
     }
 }
 
@@ -72,9 +73,11 @@ where
     R: rand::Rng,
     D: crate::db::Blague,
 {
-    fn random(&mut self, team_id: &str) -> Result {
+    fn random(&self, team_id: &str) -> Result {
         let l = self.db.count(team_id)?;
-        let blague = self.db.pick(team_id, self.rng.gen_range(0..l))?;
+        let blague = self
+            .db
+            .pick(team_id, self.rng.borrow_mut().gen_range(0..l))?;
         match blague {
             Some(b) => Ok(b.text),
             None => Err(Error::NoData("cannot find that joke".to_string())),
@@ -97,7 +100,7 @@ impl BadJokes {
 }
 
 impl Blague for BadJokes {
-    fn random(&mut self, _team_id: &str) -> Result {
+    fn random(&self, _team_id: &str) -> Result {
         let r = self
             .c
             .get("https://random-ize.com/bad-jokes/bad-jokes-f.php")

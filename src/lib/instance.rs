@@ -102,7 +102,7 @@ impl<C: client::Sender + client::Notifier> Instance<C> {
                 reply.push_str(&format!("`{}`\n", key));
             }
 
-            return self.client.reply(post.clone(), &reply).map_err(client_err);
+            return self.client.reply(post, &reply).map_err(client_err);
         }
 
         match regex::Regex::new("^!help ([a-zA-Z0-9_-]+).*")
@@ -112,8 +112,8 @@ impl<C: client::Sender + client::Notifier> Instance<C> {
             Some(captures) => {
                 let name = captures.get(1).unwrap().as_str();
                 match self.helps.get(name) {
-                    Some(m) => self.client.reply(post.clone(), m),
-                    None => self.client.reply(post.clone(), "tutétrompé"),
+                    Some(m) => self.client.reply(post, m),
+                    None => self.client.reply(post, "tutétrompé"),
                 }
                 .map_err(client_err)
             }
@@ -124,7 +124,7 @@ impl<C: client::Sender + client::Notifier> Instance<C> {
     fn process_event_post(&mut self, post: GenericPost) -> Result<(), Error> {
         let _ = self.process_help(&post)?;
         for handler in self.post_handlers.iter_mut() {
-            let res = handler.handle(post.clone());
+            let res = handler.handle(&post);
             let _ = match res {
                 Ok(_) => {}
                 Err(e) => match self.client.debug(&format!("error: {:?}", e)) {

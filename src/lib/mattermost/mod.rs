@@ -202,7 +202,7 @@ impl Channel for Mattermost {
 }
 
 impl Sender for Mattermost {
-    fn post(&self, post: GenericPost) -> Result<()> {
+    fn post(&self, post: &GenericPost) -> Result<()> {
         let mmpost = Post {
             channel_id: post.channel_id.clone(),
             create_at: 0,
@@ -223,12 +223,13 @@ impl Sender for Mattermost {
         Ok(())
     }
 
-    fn message(&self, mut post: GenericPost, message: &str) -> Result<()> {
+    fn message(&self, post: &GenericPost, message: &str) -> Result<()> {
+        let mut post = post.clone();
         post.message = message.to_string();
-        self.post(post)
+        self.post(&post)
     }
 
-    fn reaction(&self, post: GenericPost, reaction: &str) -> Result<()> {
+    fn reaction(&self, post: &GenericPost, reaction: &str) -> Result<()> {
         let reaction = Reaction {
             user_id: self.me.id.clone(),
             post_id: post.id.clone(),
@@ -242,7 +243,7 @@ impl Sender for Mattermost {
         Ok(())
     }
 
-    fn reply(&self, post: GenericPost, message: &str) -> Result<()> {
+    fn reply(&self, post: &GenericPost, message: &str) -> Result<()> {
         let mmpost = Post {
             channel_id: post.channel_id.clone(),
             create_at: 0,
@@ -277,7 +278,7 @@ impl Sender for Mattermost {
         Ok(())
     }
 
-    fn send_trigger_list(&self, triggers: Vec<Trigger>, from: GenericPost) -> Result<()> {
+    fn send_trigger_list(&self, triggers: Vec<Trigger>, from: &GenericPost) -> Result<()> {
         let mut l = String::from(format!("Ya {:?} triggers.\n", triggers.len()));
         let mut count = 0;
 
@@ -298,7 +299,7 @@ impl Sender for Mattermost {
             }
 
             if count == 20 {
-                self.message(from.clone(), &l)?;
+                self.message(from, &l)?;
                 count = 0;
                 l = String::new();
             }
@@ -316,13 +317,13 @@ impl Notifier for Mattermost {
     fn startup(&self) -> Result<()> {
         let mut post = GenericPost::with_message("jsuilà");
         post.channel_id = self.cfg.debug_channel.clone();
-        self.post(post)
+        self.post(&post)
     }
 
     fn debug(&self, message: &str) -> Result<()> {
         let mut post = GenericPost::with_message(message);
         post.channel_id = self.cfg.debug_channel.clone();
-        self.post(post)
+        self.post(&post)
     }
 
     fn error(&self, message: &str) -> Result<()> {

@@ -25,11 +25,11 @@ pub trait EventClient {
 }
 
 pub trait Sender {
-    fn post(&self, post: GenericPost) -> Result<()>;
-    fn send_trigger_list(&self, triggers: Vec<Trigger>, from: GenericPost) -> Result<()>; // FIXME: generic pagination instead
-    fn reaction(&self, post: GenericPost, reaction: &str) -> Result<()>;
-    fn reply(&self, post: GenericPost, message: &str) -> Result<()>;
-    fn message(&self, from: GenericPost, message: &str) -> Result<()>;
+    fn post(&self, post: &GenericPost) -> Result<()>;
+    fn send_trigger_list(&self, triggers: Vec<Trigger>, from: &GenericPost) -> Result<()>; // FIXME: generic pagination instead
+    fn reaction(&self, post: &GenericPost, reaction: &str) -> Result<()>;
+    fn reply(&self, post: &GenericPost, message: &str) -> Result<()>;
+    fn message(&self, from: &GenericPost, message: &str) -> Result<()>;
     fn edit(&self, post_id: &str, message: &str) -> Result<()>;
 }
 

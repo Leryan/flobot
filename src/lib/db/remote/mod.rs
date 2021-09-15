@@ -21,5 +21,5 @@ impl From<reqwest::Error> for Error {
 }
 
 pub trait Blague {
-    fn random(&mut self, team_id: &str) -> Result;
+    fn random(&self, team_id: &str) -> Result;
 }

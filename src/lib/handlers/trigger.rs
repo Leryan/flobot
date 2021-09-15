@@ -55,17 +55,17 @@ where
         )
     }
 
-    fn handle(&mut self, data: GenericPost) -> Result {
-        let message: &str = &data.message;
+    fn handle(&self, post: &GenericPost) -> Result {
+        let message = post.message.as_str();
 
         if !message.starts_with("!trigger ") {
-            let tempo_rate = format!("{}{}--rate-limit", &data.team_id, &data.channel_id);
+            let tempo_rate = format!("{}{}--rate-limit", &post.team_id, &post.channel_id);
             if self.tempo.exists(tempo_rate.clone()) {
                 return Ok(());
             } else {
                 self.tempo.set(tempo_rate.clone(), Duration::from_secs(3));
             }
-            let res = self.db.search(&data.team_id)?;
+            let res = self.db.search(&post.team_id)?;
             for t in res {
                 let tb = &t.triggered_by;
                 let tb_word = &format!(" {} ", tb);
@@ -76,7 +76,7 @@ where
                     || message.ends_with(tb_end)
                     || message == t.triggered_by
                 {
-                    let tempo_key = format!("{}{}{}", &data.team_id, &data.channel_id, tb);
+                    let tempo_key = format!("{}{}{}", &post.team_id, &post.channel_id, tb);
 
                     // sending this trigger has been delayed
                     if self.tempo.exists(tempo_key.clone()) {
@@ -86,10 +86,10 @@ where
                     self.tempo.set(tempo_key.clone(), self.delay_repeat);
 
                     if t.text_.is_some() {
-                        self.client.reply(data, &t.text_.unwrap())?;
+                        self.client.reply(post, &t.text_.unwrap())?;
                         break; // text is sorted after emoji, so we can break here: emoji were already processed.
                     } else {
-                        self.client.reaction(data.clone(), &t.emoji.unwrap())?;
+                        self.client.reaction(post, &t.emoji.unwrap())?;
                     }
                 }
             }
@@ -97,18 +97,18 @@ where
         }
 
         if self.match_list.is_match(message) {
-            let res = self.db.list(&data.team_id)?;
-            return Ok(self.client.send_trigger_list(res, data)?);
+            let res = self.db.list(&post.team_id)?;
+            return Ok(self.client.send_trigger_list(res, post)?);
         }
 
         match self.match_text.captures(message) {
             Some(captures) => {
                 let _ = self.db.add_text(
-                    &data.team_id,
+                    &post.team_id,
                     captures.get(1).unwrap().as_str(),
                     captures.get(2).unwrap().as_str(),
                 );
-                return Ok(self.client.reaction(data, "ok_hand")?);
+                return Ok(self.client.reaction(post, "ok_hand")?);
             }
             None => {}
         }
@@ -116,11 +116,11 @@ where
         match self.match_reaction.captures(message) {
             Some(captures) => {
                 let _ = self.db.add_emoji(
-                    &data.team_id,
+                    &post.team_id,
                     captures.get(1).unwrap().as_str(),
                     captures.get(2).unwrap().as_str(),
                 );
-                return Ok(self.client.reaction(data, "ok_hand")?);
+                return Ok(self.client.reaction(post, "ok_hand")?);
             }
             None => {}
         }
@@ -128,8 +128,8 @@ where
             Some(captures) => {
                 let _ = self
                     .db
-                    .del(&data.team_id, captures.get(1).unwrap().as_str())?;
-                return Ok(self.client.reaction(data, "ok_hand")?);
+                    .del(&post.team_id, captures.get(1).unwrap().as_str())?;
+                return Ok(self.client.reaction(post, "ok_hand")?);
             }
             None => {}
         }

@@ -59,30 +59,30 @@ where
         )
     }
 
-    fn handle(&mut self, data: GenericPost) -> Result {
-        let msg: &str = &data.message;
+    fn handle(&self, post: &GenericPost) -> Result {
+        let msg = post.message.as_str();
 
         if msg == "!blague" {
-            let blague = self.remote.random(&data.team_id)?;
-            return Ok(self.client.message(data, &blague)?);
+            let blague = self.remote.random(&post.team_id)?;
+            return Ok(self.client.message(post, &blague)?);
         } else if msg == "!blague list" {
-            let blagues = self.store.list(&data.team_id)?;
+            let blagues = self.store.list(&post.team_id)?;
             let mut rep = String::from("Liste des blagounettes enregistrées à la meuson:\n");
             for blague in blagues {
                 rep.push_str(&format!(" * {}: {}\n", blague.id, &blague.text));
             }
 
-            return Ok(self.client.message(data, &rep)?);
+            return Ok(self.client.message(post, &rep)?);
         }
 
         match self.match_del.captures(msg) {
             Some(captures) => {
                 match captures.get(1).unwrap().as_str().trim().parse() {
                     Ok(num) => {
-                        self.store.del(&data.team_id, num)?;
-                        return Ok(self.client.reaction(data, "ok_hand")?);
+                        self.store.del(&post.team_id, num)?;
+                        return Ok(self.client.reaction(post, "ok_hand")?);
                     }
-                    Err(e) => return Ok(self.client.reply(data, &format!("beurk: {:?}", e))?),
+                    Err(e) => return Ok(self.client.reply(post, &format!("beurk: {:?}", e))?),
                 };
             }
             None => {}
@@ -94,13 +94,13 @@ where
                     if blague.len() > 300 {
                         return Ok(self
                             .client
-                            .reply(data, "la blague est trop longue. max 300 caractères")?);
+                            .reply(post, "la blague est trop longue. max 300 caractères")?);
                     }
-                    self.store.add(&data.team_id, blague)?;
-                    return Ok(self.client.reaction(data, "ok_hand")?);
+                    self.store.add(&post.team_id, blague)?;
+                    return Ok(self.client.reaction(post, "ok_hand")?);
                 }
                 None => {
-                    return Ok(self.client.reply(data, "t’as des gros doigts papa")?);
+                    return Ok(self.client.reply(post, "t’as des gros doigts papa")?);
                 }
             }
         }
