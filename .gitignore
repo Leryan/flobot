@@ -7,3 +7,4 @@
 **/*.rs.bk
 /flobot.db
 /flobot.env
+/.vscode
