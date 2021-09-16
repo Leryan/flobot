@@ -27,9 +27,7 @@ impl crate::db::Trigger for super::Sqlite {
             team_id: team_id,
         };
 
-        let _ = diesel::insert_into(table::trigger)
-            .values(&new_trigger)
-            .execute(&self.db)?;
+        let _ = diesel::insert_into(table::trigger).values(&new_trigger).execute(&self.db)?;
         Ok(())
     }
 
@@ -41,16 +39,12 @@ impl crate::db::Trigger for super::Sqlite {
             team_id: team_id,
         };
 
-        let _ = diesel::insert_into(table::trigger)
-            .values(&new_trigger)
-            .execute(&self.db)?;
+        let _ = diesel::insert_into(table::trigger).values(&new_trigger).execute(&self.db)?;
         Ok(())
     }
 
     fn del(&self, team_id_: &str, trigger_: &str) -> Result<()> {
-        let filter = table::triggered_by
-            .eq(trigger_)
-            .and(table::team_id.eq(team_id_));
+        let filter = table::triggered_by.eq(trigger_).and(table::team_id.eq(team_id_));
         let _ = diesel::delete(table::trigger.filter(filter)).execute(&self.db)?;
         Ok(())
     }

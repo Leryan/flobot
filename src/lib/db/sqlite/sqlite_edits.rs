@@ -69,9 +69,7 @@ impl crate::db::Edits for super::Sqlite {
             user_id: None,
         };
 
-        let _ = diesel::insert_into(table::edits)
-            .values(&edit_)
-            .execute(&self.db)?;
+        let _ = diesel::insert_into(table::edits).values(&edit_).execute(&self.db)?;
         Ok(())
     }
 }

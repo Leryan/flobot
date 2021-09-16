@@ -28,8 +28,7 @@ pub struct Blague<R, S, C> {
 impl<R, S, C> Blague<R, S, C> {
     pub fn new(store: Rc<S>, remote: R, client: Rc<C>) -> Self {
         Blague {
-            match_del: Regex::new(r"^!blague del (.*)")
-                .expect("cannot compile blague match del regex"),
+            match_del: Regex::new(r"^!blague del (.*)").expect("cannot compile blague match del regex"),
             store,
             remote,
             client,
@@ -92,9 +91,7 @@ where
             match msg.splitn(2, " ").collect::<Vec<&str>>().get(1) {
                 Some(blague) => {
                     if blague.len() > 300 {
-                        return Ok(self
-                            .client
-                            .reply(post, "la blague est trop longue. max 300 caractères")?);
+                        return Ok(self.client.reply(post, "la blague est trop longue. max 300 caractères")?);
                     }
                     self.store.add(&post.team_id, blague)?;
                     return Ok(self.client.reaction(post, "ok_hand")?);

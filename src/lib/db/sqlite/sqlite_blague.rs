@@ -6,9 +6,7 @@ use diesel::prelude::*;
 
 impl crate::db::Blague for super::Sqlite {
     fn pick(&self, team_id: &str, relnum: u64) -> Result<Option<Blague>> {
-        let filter = table::blague
-            .filter(table::team_id.eq(team_id))
-            .offset(relnum as i64);
+        let filter = table::blague.filter(table::team_id.eq(team_id)).offset(relnum as i64);
         match filter.first(&self.db) {
             Ok(b) => Ok(Some(b)),
             Err(e) => match e {
@@ -42,9 +40,7 @@ impl crate::db::Blague for super::Sqlite {
             team_id: team_id,
             text: text,
         };
-        let _ = diesel::insert_into(table::blague)
-            .values(&new_blague)
-            .execute(&self.db)?;
+        let _ = diesel::insert_into(table::blague).values(&new_blague).execute(&self.db)?;
         Ok(())
     }
 }

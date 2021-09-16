@@ -51,6 +51,12 @@ impl GenericPost {
         s.message = message.to_string();
         s
     }
+
+    pub fn new_message(&self, message: &str) -> Self {
+        let mut s = self.clone();
+        s.message = message.to_string();
+        s
+    }
 }
 
 #[derive(Clone, Debug)]

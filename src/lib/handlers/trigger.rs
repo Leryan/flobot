@@ -27,8 +27,7 @@ impl<C, E> Trigger<C, E> {
             delay_repeat,
             match_list: Regex::new("^!trigger list.*$").unwrap(),
             match_del: Regex::new("^!trigger del \"(.+)\".*").unwrap(),
-            match_reaction: Regex::new("^!trigger reaction \"([^\"]+)\" [:\"]([^:]+)[:\"].*$")
-                .unwrap(),
+            match_reaction: Regex::new("^!trigger reaction \"([^\"]+)\" [:\"]([^:]+)[:\"].*$").unwrap(),
             match_text: Regex::new("^!trigger text \"([^\"]+)\" \"([^\"]+)\".*$").unwrap(),
         }
     }
@@ -71,11 +70,7 @@ where
                 let tb_word = &format!(" {} ", tb);
                 let tb_start = &format!("{} ", tb);
                 let tb_end = &format!(" {}", tb);
-                if message.contains(tb_word)
-                    || message.starts_with(tb_start)
-                    || message.ends_with(tb_end)
-                    || message == t.triggered_by
-                {
+                if message.contains(tb_word) || message.starts_with(tb_start) || message.ends_with(tb_end) || message == t.triggered_by {
                     let tempo_key = format!("{}{}{}", &post.team_id, &post.channel_id, tb);
 
                     // sending this trigger has been delayed
@@ -103,11 +98,9 @@ where
 
         match self.match_text.captures(message) {
             Some(captures) => {
-                let _ = self.db.add_text(
-                    &post.team_id,
-                    captures.get(1).unwrap().as_str(),
-                    captures.get(2).unwrap().as_str(),
-                );
+                let _ = self
+                    .db
+                    .add_text(&post.team_id, captures.get(1).unwrap().as_str(), captures.get(2).unwrap().as_str());
                 return Ok(self.client.reaction(post, "ok_hand")?);
             }
             None => {}
@@ -115,20 +108,16 @@ where
 
         match self.match_reaction.captures(message) {
             Some(captures) => {
-                let _ = self.db.add_emoji(
-                    &post.team_id,
-                    captures.get(1).unwrap().as_str(),
-                    captures.get(2).unwrap().as_str(),
-                );
+                let _ = self
+                    .db
+                    .add_emoji(&post.team_id, captures.get(1).unwrap().as_str(), captures.get(2).unwrap().as_str());
                 return Ok(self.client.reaction(post, "ok_hand")?);
             }
             None => {}
         }
         match self.match_del.captures(message) {
             Some(captures) => {
-                let _ = self
-                    .db
-                    .del(&post.team_id, captures.get(1).unwrap().as_str())?;
+                let _ = self.db.del(&post.team_id, captures.get(1).unwrap().as_str())?;
                 return Ok(self.client.reaction(post, "ok_hand")?);
             }
             None => {}

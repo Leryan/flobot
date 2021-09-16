@@ -69,10 +69,9 @@ impl<C: client::Sender + client::Notifier> Instance<C> {
     }
 
     pub fn add_post_handler(&mut self, handler: PostHandler) -> &mut Self {
-        handler.help().and_then(|help| {
-            self.helps
-                .insert(handler.name().to_string(), help.to_string())
-        });
+        handler
+            .help()
+            .and_then(|help| self.helps.insert(handler.name().to_string(), help.to_string()));
         self.post_handlers.push(handler);
         self
     }
@@ -105,10 +104,7 @@ impl<C: client::Sender + client::Notifier> Instance<C> {
             return self.client.reply(post, &reply).map_err(client_err);
         }
 
-        match regex::Regex::new("^!help ([a-zA-Z0-9_-]+).*")
-            .unwrap()
-            .captures(&post.message)
-        {
+        match regex::Regex::new("^!help ([a-zA-Z0-9_-]+).*").unwrap().captures(&post.message) {
             Some(captures) => {
                 let name = captures.get(1).unwrap().as_str();
                 match self.helps.get(name) {
@@ -153,16 +149,12 @@ impl<C: client::Sender + client::Notifier> Instance<C> {
             }
             GenericEvent::Status(status) => match status.code {
                 StatusCode::OK => Ok(()),
-                StatusCode::Error => Err(Error::Status(
-                    status.error.unwrap_or(StatusError::new_none()).message,
-                )),
+                StatusCode::Error => Err(Error::Status(status.error.unwrap_or(StatusError::new_none()).message)),
                 StatusCode::Unsupported => {
                     println!("unsupported: {:?}", status);
                     Ok(())
                 }
-                StatusCode::Unknown => Err(Error::Other(
-                    status.error.unwrap_or(StatusError::new_none()).message,
-                )),
+                StatusCode::Unknown => Err(Error::Other(status.error.unwrap_or(StatusError::new_none()).message)),
             },
         }
     }

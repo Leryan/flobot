@@ -75,9 +75,7 @@ where
 {
     fn random(&self, team_id: &str) -> Result {
         let l = self.db.count(team_id)?;
-        let blague = self
-            .db
-            .pick(team_id, self.rng.borrow_mut().gen_range(0..l))?;
+        let blague = self.db.pick(team_id, self.rng.borrow_mut().gen_range(0..l))?;
         match blague {
             Some(b) => Ok(b.text),
             None => Err(Error::NoData("cannot find that joke".to_string())),
@@ -117,11 +115,7 @@ impl Blague for BadJokes {
                     captures.get(2).unwrap().as_str()
                 ));
             }
-            None => {
-                return Err(Error::NoData(
-                    "no match for random-ize.com/bad-jokes/".to_string(),
-                ))
-            }
+            None => return Err(Error::NoData("no match for random-ize.com/bad-jokes/".to_string())),
         };
     }
 }

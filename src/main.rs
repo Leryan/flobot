@@ -57,30 +57,16 @@ fn main() -> std::result::Result<(), Box<dyn std::error::Error>> {
     let botdb = Rc::new(dbs::Sqlite::new(conn));
     let tempo = Tempo::new();
     let ignore_self = middleware::IgnoreSelf::new(mm_client.my_user_id().to_string().clone());
-    let trigger = handlers::trigger::Trigger::new(
-        Rc::clone(&botdb),
-        Rc::clone(&mm_client),
-        tempo.clone(),
-        Duration::from_secs(120),
-    );
+    let trigger = handlers::trigger::Trigger::new(Rc::clone(&botdb), Rc::clone(&mm_client), tempo.clone(), Duration::from_secs(120));
     let edits = handlers::edits::Edit::new(Rc::clone(&botdb), Rc::clone(&mm_client));
     let remote_blague = db::remote::blague::BadJokes::new();
     let remote_sqlite = db::remote::blague::Sqlite::new(rand::thread_rng(), Rc::clone(&botdb));
-    let rnd_blague = db::remote::blague::Select::new(
-        rand::thread_rng(),
-        Box::new(remote_blague),
-        Box::new(remote_sqlite),
-    );
-    let blague =
-        handlers::blague::Blague::new(Rc::clone(&botdb), rnd_blague, Rc::clone(&mm_client));
+    let rnd_blague = db::remote::blague::Select::new(rand::thread_rng(), Box::new(remote_blague), Box::new(remote_sqlite));
+    let blague = handlers::blague::Blague::new(Rc::clone(&botdb), rnd_blague, Rc::clone(&mm_client));
     let ww = handlers::ww::WW::new(Rc::clone(&mm_client));
     let smsprov = handlers::sms::Octopush::new(
-        env::var("BOT_OCTOPUSH_LOGIN")
-            .unwrap_or("".to_string())
-            .as_str(),
-        env::var("BOT_OCTOPUSH_APIKEY")
-            .unwrap_or("".to_string())
-            .as_str(),
+        env::var("BOT_OCTOPUSH_LOGIN").unwrap_or("".to_string()).as_str(),
+        env::var("BOT_OCTOPUSH_APIKEY").unwrap_or("".to_string()).as_str(),
     );
     let sms = handlers::sms::SMS::new(smsprov, Rc::clone(&botdb), Rc::clone(&mm_client));
 

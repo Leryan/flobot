@@ -9,3 +9,4 @@ pub mod instance;
 pub mod mattermost;
 pub mod middleware;
 pub mod models;
+pub mod werewolf;

@@ -143,11 +143,7 @@ impl Mattermost {
             .send()?
             .json()?;
         println!("my user id: {}", me.id);
-        Ok(Mattermost {
-            cfg: cfg,
-            me,
-            client,
-        })
+        Ok(Mattermost { cfg: cfg, me, client })
     }
 
     fn url(&self, add: &str) -> String {
@@ -178,9 +174,7 @@ impl Channel for Mattermost {
             .json()?;
 
         for user_id in users.iter() {
-            let uid = UserID {
-                user_id: user_id.clone(),
-            };
+            let uid = UserID { user_id: user_id.clone() };
             self.client
                 .post(&self.url(format!("/channels/{}/members", r.id).as_str()))
                 .bearer_auth(&self.cfg.token)
@@ -285,17 +279,9 @@ impl Sender for Mattermost {
         for trigger in triggers {
             count += 1;
             if trigger.emoji.is_some() {
-                l.push_str(&format!(
-                    " * `{}`: :{}:\n",
-                    trigger.triggered_by,
-                    trigger.emoji.unwrap()
-                ));
+                l.push_str(&format!(" * `{}`: :{}:\n", trigger.triggered_by, trigger.emoji.unwrap()));
             } else {
-                l.push_str(&format!(
-                    " * `{}`: {}\n",
-                    trigger.triggered_by,
-                    trigger.text_.unwrap()
-                ));
+                l.push_str(&format!(" * `{}`: {}\n", trigger.triggered_by, trigger.text_.unwrap()));
             }
 
             if count == 20 {

@@ -27,12 +27,7 @@ impl From<reqwest::Error> for SMSError {
 }
 
 pub trait SMSSender {
-    fn send(
-        &self,
-        text: &str,
-        to_number: &str,
-        from_name: &str,
-    ) -> std::result::Result<(), SMSError>;
+    fn send(&self, text: &str, to_number: &str, from_name: &str) -> std::result::Result<(), SMSError>;
 }
 
 // FIXME: move implem elsewhere
@@ -51,12 +46,7 @@ impl Octopush {
 }
 
 impl SMSSender for Octopush {
-    fn send(
-        &self,
-        text: &str,
-        to_number: &str,
-        from_name: &str,
-    ) -> std::result::Result<(), SMSError> {
+    fn send(&self, text: &str, to_number: &str, from_name: &str) -> std::result::Result<(), SMSError> {
         let sms = json!({
             "sender": from_name,
             "recipients": [{"phone_number": to_number}],
@@ -103,12 +93,9 @@ impl<S: SMSSender, D: db::SMS, C: client::Sender> SMS<S, D, C> {
             db: db,
             provider: provider,
             client: client,
-            re_register: Regex::new(r"^!sms[\s]+register[\s]+([a-zA-Z0-9\-_\.]+)[\s]+(\+[0-9]{11}).*$")
+            re_register: Regex::new(r"^!sms[\s]+register[\s]+([a-zA-Z0-9\-_\.]+)[\s]+(\+[0-9]{11}).*$").unwrap(),
+            re_prepare: Regex::new(r"^!sms[\s]+prepare[\s]+([a-zA-Z0-9\-_\.]+)[\s]+([a-zA-Z0-9\-_\.]+)[\s]+([a-zA-Z0-9]+)[\s]+(.+)$")
                 .unwrap(),
-            re_prepare: Regex::new(
-                r"^!sms[\s]+prepare[\s]+([a-zA-Z0-9\-_\.]+)[\s]+([a-zA-Z0-9\-_\.]+)[\s]+([a-zA-Z0-9]+)[\s]+(.+)$",
-            )
-            .unwrap(),
             re_send: Regex::new(r"^!sms[\s]+([a-zA-Z0-9\-_\.]+)[\s]*$").unwrap(),
             re_list: Regex::new(r"^!sms[\s]+list[\s]*$").unwrap(),
             re_sendn: Regex::new(r"^!sms[\s]+send[\s]+([a-zA-Z0-9\-_\.]+)[\s]+([a-zA-Z0-9]+)[\s]+(.*)$").unwrap(),
@@ -200,11 +187,10 @@ Exemple :
             if let Some(prepare) = prepare {
                 let contact = self.db.get_contact(tid, None, Some(&prepare.contact_id))?;
                 if let Some(contact) = contact {
-                    if let Err(e) = self.provider.send(
-                        prepare.text.as_str(),
-                        contact.number.as_str(),
-                        prepare.name.as_str(),
-                    ) {
+                    if let Err(e) = self
+                        .provider
+                        .send(prepare.text.as_str(), contact.number.as_str(), prepare.name.as_str())
+                    {
                         self.client.reaction(post, "no_entry_sign")?;
                         return Err(e.into());
                     }
@@ -237,8 +223,7 @@ Exemple :
             let text = m.get(4).unwrap().as_str();
 
             if let Some(contact) = self.db.get_contact(tid, Some(contact_name), None)? {
-                self.db
-                    .set_prepare(tid, &contact.id, trigname, name, text)?;
+                self.db.set_prepare(tid, &contact.id, trigname, name, text)?;
             } else {
                 let msg = format!("Pô trouvé {}", contact_name);
                 self.client.reply(post, msg.as_str())?;
