@@ -70,6 +70,11 @@ where
         Regex::new(re).unwrap().is_match(txt)
     }
 
+    fn reset_game(&self) {
+        *self.game_owner.borrow_mut() = None;
+        *self.game.borrow_mut() = werewolf::Game::new();
+    }
+
     fn handle_game(&self, post: &GenericPost) -> handlers::Result {
         let cur = self.game.borrow().current_step();
         // answer to start, join and list commands
@@ -87,7 +92,8 @@ where
                             .is_ok()
                         {
                             self.client.reaction(&post, "ok_hand")?;
-                            self.client.post(&post.new_message("Une partie de loup-garou va démarrer ! Pour joindre la partie : `!ww join`"))?;
+                            self.client
+                                .post(&post.new_message("Une partie de loup-garou va démarrer ! Pour joindre la partie : `!ww join`"))?;
                         }
                     }
                 }
@@ -156,11 +162,8 @@ where
             println!("WW GAME STEP: {:?}", self.game.borrow().current_step());
             let step = self.game.borrow().current_step();
             match step {
-                werewolf::Step::None => {}
-                werewolf::Step::WaitPlayers => {
-                    break;
-                }
-                werewolf::Step::Ready => {}
+                werewolf::Step::None | werewolf::Step::Ready => {}
+                werewolf::Step::WaitPlayers => break,
                 werewolf::Step::WerewolfsVoteKill => {
                     self.post_all(&post.new_message("### Le soleil se couche, les villageois aussi…"))?;
                     let res = self.game.borrow_mut().process(werewolf::Action::WhoWWKill);
@@ -233,17 +236,19 @@ where
                     }
                 }
                 werewolf::Step::End => {
-                    self.post_all(&post.new_message("### Fin de la partie !"))?;
+                    let mut msg = String::from("### Fin de partie !\n\n");
                     if self.game.borrow().alive_villagers().len() == 0 {
-                        self.post_all(&post.new_message("Les loups-garous ont gagnés !"))?;
+                        msg.push_str("Les loups-garous ont gagnés !");
                     } else {
-                        self.post_all(&post.new_message("Les villageois ont gagnés !"))?;
+                        msg.push_str("Les villageois ont gagnés !");
                     }
+                    msg.push_str("\n\n**Pensez à archiver le canal :)**");
 
-                    //let _ = self.client.archive_channel(self.room_all.borrow().as_str());
+                    self.reset_game();
+
                     let _ = self.client.archive_channel(self.room_ww.borrow().as_str());
 
-                    self.post_all(&post.new_message("**Pensez à archiver le canal :)**"))?;
+                    self.post_all(&post.new_message(msg.as_str()))?;
                     break;
                 }
             };
@@ -264,7 +269,14 @@ where
     }
 
     fn help(&self) -> Option<&str> {
-        None
+        Some(
+            "### Jeu du loup garou
+
+ * Commencer une partie avec `!ww start`
+ * Joindre une partie annoncée avec `!ww join`
+ * Quand le bot annonce que la partie peut être lancée, suivre les instructions :)
+",
+        )
     }
 
     fn handle(&self, post: &GenericPost) -> Result {
@@ -275,8 +287,7 @@ where
         }
 
         if message.starts_with("!ww stop_game_now") {
-            *self.game_owner.borrow_mut() = None;
-            *self.game.borrow_mut() = werewolf::Game::new();
+            self.reset_game();
             self.client.reply(post, "Jeu arrêté.")?;
         } else {
             self.handle_game(post)?;
