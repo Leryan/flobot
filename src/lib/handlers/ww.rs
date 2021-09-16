@@ -87,6 +87,7 @@ where
                             .is_ok()
                         {
                             self.client.reaction(&post, "ok_hand")?;
+                            self.client.post(&post.new_message("Pour joindre la partie : `!ww join`"))?;
                         }
                     }
                 }
