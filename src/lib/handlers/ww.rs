@@ -75,8 +75,7 @@ where
         *self.game.borrow_mut() = werewolf::Game::new();
     }
 
-    fn handle_game(&self, post: &GenericPost) -> handlers::Result {
-        let cur = self.game.borrow().current_step();
+    fn handle_starting_commands(&self, post: &GenericPost, cur: &werewolf::Step) -> handlers::Result {
         // answer to start, join and list commands
         if self.re_match(r"!ww[\s]+start.*", post.message.as_str()) {
             match cur {
@@ -154,7 +153,14 @@ where
                 }
                 _ => self.client.reply(post, "Aucune partie en attente.")?,
             };
-        }
+        };
+
+        Ok(())
+    }
+
+    fn handle_game(&self, post: &GenericPost) -> handlers::Result {
+        let cur = self.game.borrow().current_step();
+        self.handle_starting_commands(post, &cur)?;
 
         let re_vote = Regex::new(r"!ww[\s]+vote[\s]+([\S]+)[\s]*").unwrap();
 
@@ -165,7 +171,6 @@ where
                 werewolf::Step::None | werewolf::Step::Ready => {}
                 werewolf::Step::WaitPlayers => break,
                 werewolf::Step::WerewolfsVoteKill => {
-                    self.post_all(&post.new_message("### Le soleil se couche, les villageois aussi…"))?;
                     let res = self.game.borrow_mut().process(werewolf::Action::WhoWWKill);
                     if let Ok(werewolf::ActionAnswer::WhoWWKill(players)) = res {
                         let names = players
@@ -173,6 +178,7 @@ where
                             .map(|p| format!(" * `{}`", p.name))
                             .collect::<Vec<String>>()
                             .join("\n");
+                        self.post_all(&post.new_message("### Le soleil se couche, les villageois aussi…"))?;
                         let msg = format!("### Vous avez FAIM !\nChoisissez avec `!ww vote <name>` :\n{}", names);
                         self.post_ww(&post.new_message(msg.as_str()))?;
                         break;

@@ -90,11 +90,13 @@ impl crate::db::SMS for super::Sqlite {
             .first(&self.db)?)
     }
 
-    fn list_prepare(&self, team_id: &str) -> Result<Vec<models::SMSPrepare>> {
-        Ok(tp::sms_prepare
+    fn list_prepare(&self, team_id: &str) -> Result<Vec<(models::SMSPrepare, models::SMSContact)>> {
+        let res = tp::sms_prepare
             .filter(tp::team_id.eq(team_id))
             .order_by(tp::trigname)
-            .load(&self.db)?)
+            .inner_join(tc::sms_contact)
+            .load(&self.db)?;
+        Ok(res)
     }
 
     fn get_contact(&self, team_id: &str, name: Option<&str>, id: Option<&i32>) -> Result<Option<models::SMSContact>> {

@@ -173,8 +173,8 @@ Exemple :
             for p in self.db.list_prepare(tid)?.iter() {
                 msg.push_str(
                     format!(
-                        "{} -> contact n°{}, `!sms {}` enverra : {}: {}\n",
-                        p.id, p.contact_id, p.trigname, p.name, p.text
+                        "{} -> contact {}, `!sms {}` enverra : {}: {}\n",
+                        p.0.id, p.1.name, p.0.trigname, p.0.name, p.0.text
                     )
                     .as_str(),
                 );

@@ -75,7 +75,7 @@ pub trait SMS {
     fn get_contact(&self, team_id: &str, name: Option<&str>, id: Option<&i32>) -> Result<Option<business_models::SMSContact>>;
     fn get_prepare(&self, team_id: &str, trigname: &str) -> Result<Option<business_models::SMSPrepare>>;
     fn list_contacts(&self, team_id: &str) -> Result<Vec<business_models::SMSContact>>;
-    fn list_prepare(&self, team_id: &str) -> Result<Vec<business_models::SMSPrepare>>;
+    fn list_prepare(&self, team_id: &str) -> Result<Vec<(business_models::SMSPrepare, business_models::SMSContact)>>;
 }
 
 pub fn conn(db_url: &str) -> DatabaseConnection {
