@@ -119,7 +119,7 @@ impl Blague for BadJokes {
         match self.match_.captures(&s) {
             Some(captures) => {
                 return Ok(format!(
-                    "{}…\n…\n{}",
+                    "{}\n…\n…\n{}",
                     captures.get(1).unwrap().as_str(),
                     captures.get(2).unwrap().as_str()
                 ));
