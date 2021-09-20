@@ -2,6 +2,10 @@ use super::Blague;
 use super::Error;
 use super::Result;
 use regex::Regex;
+use reqwest::blocking::Client as RClient;
+use reqwest::header as rh;
+use reqwest::header::HeaderMap as rhm;
+use reqwest::header::HeaderValue as rhv;
 use serde::Deserialize;
 use std::cell::RefCell;
 use std::convert::From;
@@ -84,20 +88,18 @@ where
 }
 
 pub struct BadJokes {
-    c: reqwest::blocking::Client,
+    c: RClient,
     match_: Regex,
 }
 
 impl BadJokes {
     pub fn new() -> Self {
-        use reqwest::header as h;
-        use reqwest::header::HeaderValue as hv;
-        let mut hm = reqwest::header::HeaderMap::new();
-        hm.insert(h::REFERER, hv::from_str("https://random-ize.com/bad-jokes/").unwrap());
-        hm.insert(h::ACCEPT, hv::from_str("text/html, */*; q=0.01").unwrap());
-        hm.insert(h::ACCEPT_LANGUAGE, hv::from_str("en-US,en;q=0.5").unwrap());
-        hm.insert("x-requested-with", hv::from_str("XMLHttpRequest").unwrap());
-        let c = reqwest::blocking::Client::builder()
+        let mut hm = rhm::new();
+        hm.insert(rh::REFERER, rhv::from_str("https://random-ize.com/bad-jokes/").unwrap());
+        hm.insert(rh::ACCEPT, rhv::from_str("text/html, */*; q=0.01").unwrap());
+        hm.insert(rh::ACCEPT_LANGUAGE, rhv::from_str("en-US,en;q=0.5").unwrap());
+        hm.insert("x-requested-with", rhv::from_str("XMLHttpRequest").unwrap());
+        let c = RClient::builder()
             .user_agent("Mozilla/5.0 (X11; Linux x86_64; rv:92.0) Gecko/20100101 Firefox/92.0")
             .default_headers(hm)
             .referer(true)
@@ -131,27 +133,21 @@ impl Blague for BadJokes {
 }
 
 pub struct BlaguesAPI {
-    client: reqwest::blocking::Client,
+    client: RClient,
 }
 
 #[derive(Deserialize)]
 struct BlaguesAPIResponse {
-    pub id: u64,
-    #[serde(rename = "type")]
-    pub type_: String,
     pub joke: String,
     pub answer: String,
 }
 
 impl BlaguesAPI {
     pub fn new(token: &str) -> Self {
-        let mut hm = reqwest::header::HeaderMap::new();
-        hm.insert(
-            reqwest::header::AUTHORIZATION,
-            reqwest::header::HeaderValue::from_str(&format!("Bearer {}", token)).unwrap(),
-        );
+        let mut hm = rhm::new();
+        hm.insert(rh::AUTHORIZATION, rhv::from_str(&format!("Bearer {}", token)).unwrap());
         Self {
-            client: reqwest::blocking::Client::builder().default_headers(hm).build().unwrap(),
+            client: RClient::builder().default_headers(hm).build().unwrap(),
         }
     }
 }
@@ -181,14 +177,13 @@ mod tests {
         use std::env;
         dotenv::from_filename("flobot.env").ok();
 
-        let test_token = env::var("BOT_BLAGUESAPI_TOKEN");
-        if let Err(_) = test_token.clone() {
-            return Ok(());
-        }
-
-        let ba = BlaguesAPI::new(&test_token.unwrap());
-        let _ = ba.random("tid")?;
-        let _ = ba.random("tid")?;
+        let test_token = env::var("BOT_BLAGUESAPI_TOKEN").unwrap();
+        let ba = BlaguesAPI::new(&test_token);
+        let r1 = ba.random("tid")?;
+        assert_ne!("", r1.as_str());
+        let r2 = ba.random("tid")?;
+        assert_ne!("", r2.as_str());
+        assert_ne!(r1, r2);
         Ok(())
     }
 }
