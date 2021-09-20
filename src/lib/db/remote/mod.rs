@@ -1,6 +1,7 @@
 pub mod blague;
 use std::convert::From;
 
+#[derive(Debug)]
 pub enum Error {
     Database(String),
     Client(String),
