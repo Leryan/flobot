@@ -24,7 +24,7 @@ impl crate::db::Edits for super::Sqlite {
     /// # use flobot::db::sqlite::Sqlite;
     /// # use flobot::db::Edits;
     /// # let conn = SqliteConnection::establish(":memory:").unwrap();
-    /// # diesel_migrations::run_pending_migrations(&conn);
+    /// # diesel_migrations::run_pending_migrations(&conn).unwrap();
     /// # let s = Sqlite::new(conn);
     /// s.add_team("team", "noedit", "noreplace").unwrap();
     /// s.add_team("team", "edit", "replace").unwrap();
