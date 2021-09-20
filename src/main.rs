@@ -53,29 +53,42 @@ fn main() -> std::result::Result<(), Box<dyn std::error::Error>> {
     embedded_migrations::run(&conn)?;
 
     println!("init client, db, handler, middleware...");
+
+    // BASICS
     let mm_client = Rc::new(Mattermost::new(cfg.clone())?);
+    let client = Rc::clone(&mm_client);
     let botdb = Rc::new(dbs::Sqlite::new(conn));
     let tempo = Tempo::new();
+
+    // MIDDLEWARE & HANDLERS
     let ignore_self = middleware::IgnoreSelf::new(mm_client.my_user_id().to_string().clone());
     let trigger = handlers::trigger::Trigger::new(Rc::clone(&botdb), Rc::clone(&mm_client), tempo.clone(), Duration::from_secs(120));
     let edits = handlers::edits::Edit::new(Rc::clone(&botdb), Rc::clone(&mm_client));
-    let remote_blague = db::remote::blague::BadJokes::new();
-    let remote_sqlite = db::remote::blague::Sqlite::new(rand::thread_rng(), Rc::clone(&botdb));
-    let blaguesapi = db::remote::blague::BlaguesAPI::new(env::var("BOT_BLAGUESAPI_TOKEN").unwrap_or("".to_string()).as_str());
-    let rnd_blague = db::remote::blague::Select::new(
-        rand::thread_rng(),
-        vec![Box::new(remote_blague), Box::new(blaguesapi), Box::new(remote_sqlite)],
-    );
+
+    // BLAGUES
+    let mut blague_providers: Vec<Box<dyn db::remote::Blague>> = vec![
+        Box::new(db::remote::blague::BadJokes::new()),
+        Box::new(db::remote::blague::Sqlite::new(rand::thread_rng(), Rc::clone(&botdb))),
+    ];
+    if let Ok(token) = env::var("BOT_BLAGUESAPI_TOKEN") {
+        let blaguesapi = db::remote::blague::BlaguesAPI::new(token.as_str());
+        blague_providers.push(Box::new(blaguesapi));
+    }
+    let rnd_blague = db::remote::blague::Select::new(rand::thread_rng(), blague_providers);
     let blague = handlers::blague::Blague::new(Rc::clone(&botdb), rnd_blague, Rc::clone(&mm_client));
+
+    // WEREWOLF GAME
     let ww = handlers::ww::WW::new(Rc::clone(&mm_client));
+
+    // SMS
     let smsprov = handlers::sms::Octopush::new(
         env::var("BOT_OCTOPUSH_LOGIN").unwrap_or("".to_string()).as_str(),
         env::var("BOT_OCTOPUSH_APIKEY").unwrap_or("".to_string()).as_str(),
     );
     let sms = handlers::sms::SMS::new(smsprov, Rc::clone(&botdb), Rc::clone(&mm_client));
 
+    // INSTANCE
     println!("launch bot!");
-    let client = Rc::clone(&mm_client);
     let mut instance = Instance::new(client);
     instance.add_middleware(Box::new(ignore_self));
     instance.add_post_handler(Box::new(trigger));
@@ -87,6 +100,8 @@ fn main() -> std::result::Result<(), Box<dyn std::error::Error>> {
     if flag_debug {
         instance.add_middleware(Box::new(middleware::Debug::new("debug")));
     }
+
+    // RUN FOREVER
     instance.run(receiver.clone())?;
 
     drop(botdb);
