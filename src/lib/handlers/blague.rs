@@ -21,16 +21,16 @@ impl From<remote::Error> for crate::handlers::Error {
 pub struct Blague<R, S, C> {
     match_del: Regex,
     store: Rc<S>,
-    remote: R,
+    remotes: R,
     client: Rc<C>,
 }
 
 impl<R, S, C> Blague<R, S, C> {
-    pub fn new(store: Rc<S>, remote: R, client: Rc<C>) -> Self {
+    pub fn new(store: Rc<S>, remotes: R, client: Rc<C>) -> Self {
         Blague {
             match_del: Regex::new(r"^!blague del (.*)").expect("cannot compile blague match del regex"),
             store,
-            remote,
+            remotes,
             client,
         }
     }
@@ -62,7 +62,7 @@ where
         let msg = post.message.as_str();
 
         if msg == "!blague" {
-            let blague = self.remote.random(&post.team_id)?;
+            let blague = self.remotes.random(&post.team_id)?;
             return Ok(self.client.message(post, &blague)?);
         } else if msg == "!blague list" {
             let blagues = self.store.list(&post.team_id)?;

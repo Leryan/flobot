@@ -61,7 +61,11 @@ fn main() -> std::result::Result<(), Box<dyn std::error::Error>> {
     let edits = handlers::edits::Edit::new(Rc::clone(&botdb), Rc::clone(&mm_client));
     let remote_blague = db::remote::blague::BadJokes::new();
     let remote_sqlite = db::remote::blague::Sqlite::new(rand::thread_rng(), Rc::clone(&botdb));
-    let rnd_blague = db::remote::blague::Select::new(rand::thread_rng(), Box::new(remote_blague), Box::new(remote_sqlite));
+    let blaguesapi = db::remote::blague::BlaguesAPI::new(env::var("BOT_BLAGUESAPI_TOKEN").unwrap_or("".to_string()).as_str());
+    let rnd_blague = db::remote::blague::Select::new(
+        rand::thread_rng(),
+        vec![Box::new(remote_blague), Box::new(blaguesapi), Box::new(remote_sqlite)],
+    );
     let blague = handlers::blague::Blague::new(Rc::clone(&botdb), rnd_blague, Rc::clone(&mm_client));
     let ww = handlers::ww::WW::new(Rc::clone(&mm_client));
     let smsprov = handlers::sms::Octopush::new(

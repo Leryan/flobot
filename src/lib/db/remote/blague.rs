@@ -2,6 +2,7 @@ use super::Blague;
 use super::Error;
 use super::Result;
 use regex::Regex;
+use serde::Deserialize;
 use std::cell::RefCell;
 use std::convert::From;
 use std::rc::Rc;
@@ -21,9 +22,9 @@ pub struct Select<R> {
 }
 
 impl<R: rand::Rng> Select<R> {
-    pub fn new(rng: R, first: Box<dyn Blague>, second: Box<dyn Blague>) -> Self {
+    pub fn new(rng: R, remotes: Vec<Box<dyn Blague>>) -> Self {
         Self {
-            remotes: vec![first, second],
+            remotes: remotes,
             rng: RefCell::new(rng),
         }
     }
@@ -129,6 +130,39 @@ impl Blague for BadJokes {
     }
 }
 
+pub struct BlaguesAPI {
+    client: reqwest::blocking::Client,
+}
+
+#[derive(Deserialize)]
+struct BlaguesAPIResponse {
+    pub id: u64,
+    #[serde(rename = "type")]
+    pub type_: String,
+    pub joke: String,
+    pub answer: String,
+}
+
+impl BlaguesAPI {
+    pub fn new(token: &str) -> Self {
+        let mut hm = reqwest::header::HeaderMap::new();
+        hm.insert(
+            reqwest::header::AUTHORIZATION,
+            reqwest::header::HeaderValue::from_str(&format!("Bearer {}", token)).unwrap(),
+        );
+        Self {
+            client: reqwest::blocking::Client::builder().default_headers(hm).build().unwrap(),
+        }
+    }
+}
+
+impl Blague for BlaguesAPI {
+    fn random(&self, _team_id: &str) -> Result {
+        let joke: BlaguesAPIResponse = self.client.get("https://www.blagues-api.fr/api/random").send()?.json()?;
+        return Ok(format!("{}\n…\n…\n{}", joke.joke, joke.answer));
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -138,6 +172,17 @@ mod tests {
         let bj = BadJokes::new();
         let _ = bj.random("tid1")?;
         let _ = bj.random("tid2")?;
+        Ok(())
+    }
+
+    #[test]
+    fn test_blaguesapi_random() -> std::result::Result<(), Error> {
+        use dotenv;
+        dotenv::from_filename("flobot.env").ok();
+        use std::env;
+        let ba = BlaguesAPI::new(&env::var("BOT_BLAGUESAPI_TOKEN").unwrap());
+        let _ = ba.random("tid")?;
+        let _ = ba.random("tid")?;
         Ok(())
     }
 }
