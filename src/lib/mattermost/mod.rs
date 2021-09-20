@@ -5,6 +5,7 @@ use crate::conf::Conf;
 use crate::mattermost::models::Me as MMMe;
 use crate::mattermost::models::*;
 use crate::models::*;
+use chrono;
 use crossbeam::crossbeam_channel::Sender as ChannelSender;
 use reqwest;
 use serde::{Deserialize, Serialize};
@@ -300,8 +301,9 @@ impl Sender for Mattermost {
 }
 
 impl Notifier for Mattermost {
-    fn startup(&self) -> Result<()> {
-        let mut post = GenericPost::with_message("jsuilà");
+    fn startup(&self, message: &str) -> Result<()> {
+        let datetime = chrono::offset::Local::now();
+        let mut post = GenericPost::with_message(&format!("# Startup {:?} (local time)\n{}", datetime, message));
         post.channel_id = self.cfg.debug_channel.clone();
         self.post(&post)
     }

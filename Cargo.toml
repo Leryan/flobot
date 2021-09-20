@@ -16,6 +16,7 @@ sqlite = []
 postgres = []
 
 [dependencies]
+chrono = "*"
 diesel = { version = "1.4", features = ["sqlite"] }
 diesel_migrations = { version="1.4", features= ["sqlite"]}
 ws = {version = "*", features = ["nativetls"]}

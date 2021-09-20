@@ -45,7 +45,7 @@ pub trait Getter {
 }
 
 pub trait Notifier {
-    fn startup(&self) -> Result<()>;
+    fn startup(&self, message: &str) -> Result<()>;
     fn debug(&self, message: &str) -> Result<()>;
     fn error(&self, message: &str) -> Result<()>;
 }

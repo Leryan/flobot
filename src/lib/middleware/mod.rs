@@ -22,6 +22,7 @@ impl From<client::Error> for Error {
 
 pub trait Middleware {
     fn process(&mut self, event: GenericEvent) -> Result;
+    fn name(&self) -> &str;
 }
 
 pub struct Debug {
@@ -38,6 +39,10 @@ impl Middleware for Debug {
     fn process(&mut self, event: GenericEvent) -> Result {
         println!("middleware {:?} -> {:?}", self.name, event);
         Ok(Continue::Yes(event))
+    }
+
+    fn name(&self) -> &str {
+        "Debug"
     }
 }
 
@@ -63,5 +68,9 @@ impl Middleware for IgnoreSelf {
             }
             _ => Ok(Continue::Yes(event)),
         }
+    }
+
+    fn name(&self) -> &str {
+        "IgnoreSelf"
     }
 }

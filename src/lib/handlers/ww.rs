@@ -1,6 +1,6 @@
 use crate::client;
 use crate::handlers;
-use crate::handlers::{Handler, Result};
+use crate::handlers::{Handler as BotHandler, Result};
 use crate::models::GenericPost;
 use crate::werewolf;
 use regex::Regex;
@@ -8,7 +8,7 @@ use std::cell::RefCell;
 use std::convert::From;
 use std::rc::Rc;
 
-pub struct WW<C> {
+pub struct Handler<C> {
     client: Rc<C>,
     game: RefCell<werewolf::Game>,
     room_all: RefCell<String>,
@@ -17,9 +17,9 @@ pub struct WW<C> {
     game_owner: RefCell<Option<String>>,
 }
 
-impl<C> WW<C> {
+impl<C> Handler<C> {
     pub fn new(client: Rc<C>) -> Self {
-        WW {
+        Handler {
             client: client,
             room_ww: RefCell::new(String::from("")),
             room_all: RefCell::new(String::from("")),
@@ -48,7 +48,7 @@ Détails techniques :
  * Les votes utilisent toujours les *username* et se font comme suit : `!ww vote <username>`
 ";
 
-impl<C> WW<C>
+impl<C> Handler<C>
 where
     C: client::Sender + client::Channel + client::Getter,
 {
@@ -264,7 +264,7 @@ where
     }
 }
 
-impl<C> Handler for WW<C>
+impl<C> BotHandler for Handler<C>
 where
     C: client::Sender + client::Channel + client::Getter,
 {

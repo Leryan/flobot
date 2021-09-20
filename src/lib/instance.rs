@@ -168,7 +168,17 @@ impl<C: client::Sender + client::Notifier> Instance<C> {
     }
 
     pub fn run(&mut self, receiver: Receiver<GenericEvent>) -> Result<(), Error> {
-        let _ = self.client.startup()?;
+        let mut loaded = String::from("## Loaded middlewares\n");
+        for m in self.middlewares.iter() {
+            loaded.push_str(&format!(" * `{}`\n", m.name()));
+        }
+        loaded.push_str("## Loaded post handlers\n");
+        for h in self.post_handlers.iter() {
+            loaded.push_str(&format!(" * `{}`\n", h.name()));
+        }
+
+        let _ = self.client.startup(&loaded)?;
+
         loop {
             match receiver.recv_timeout(Duration::from_secs(5)) {
                 Ok(e) => {

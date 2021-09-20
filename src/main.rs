@@ -6,6 +6,7 @@ use dotenv;
 use flobot::client::*;
 use flobot::conf::Conf;
 use flobot::db;
+use flobot::db::remote::{blague as rdb_blague, Blague};
 use flobot::db::sqlite as dbs;
 use flobot::db::tempo::Tempo;
 use flobot::handlers;
@@ -59,47 +60,48 @@ fn main() -> std::result::Result<(), Box<dyn std::error::Error>> {
     let client = Rc::clone(&mm_client);
     let botdb = Rc::new(dbs::Sqlite::new(conn));
     let tempo = Tempo::new();
-
-    // MIDDLEWARE & HANDLERS
-    let ignore_self = middleware::IgnoreSelf::new(mm_client.my_user_id().to_string().clone());
-    let trigger = handlers::trigger::Trigger::new(Rc::clone(&botdb), Rc::clone(&mm_client), tempo.clone(), Duration::from_secs(120));
-    let edits = handlers::edits::Edit::new(Rc::clone(&botdb), Rc::clone(&mm_client));
-
-    // BLAGUES
-    let mut blague_providers: Vec<Box<dyn db::remote::Blague>> = vec![
-        Box::new(db::remote::blague::BadJokes::new()),
-        Box::new(db::remote::blague::Sqlite::new(rand::thread_rng(), Rc::clone(&botdb))),
-    ];
-    if let Ok(token) = env::var("BOT_BLAGUESAPI_TOKEN") {
-        let blaguesapi = db::remote::blague::BlaguesAPI::new(token.as_str());
-        blague_providers.push(Box::new(blaguesapi));
-    }
-    let rnd_blague = db::remote::blague::Select::new(rand::thread_rng(), blague_providers);
-    let blague = handlers::blague::Blague::new(Rc::clone(&botdb), rnd_blague, Rc::clone(&mm_client));
-
-    // WEREWOLF GAME
-    let ww = handlers::ww::WW::new(Rc::clone(&mm_client));
-
-    // SMS
-    let smsprov = handlers::sms::Octopush::new(
-        env::var("BOT_OCTOPUSH_LOGIN").unwrap_or("".to_string()).as_str(),
-        env::var("BOT_OCTOPUSH_APIKEY").unwrap_or("".to_string()).as_str(),
-    );
-    let sms = handlers::sms::SMS::new(smsprov, Rc::clone(&botdb), Rc::clone(&mm_client));
-
-    // INSTANCE
-    println!("launch bot!");
     let mut instance = Instance::new(client);
-    instance.add_middleware(Box::new(ignore_self));
-    instance.add_post_handler(Box::new(trigger));
-    instance.add_post_handler(Box::new(edits));
-    instance.add_post_handler(Box::new(blague));
-    instance.add_post_handler(Box::new(ww));
-    instance.add_post_handler(Box::new(sms));
 
+    // MIDDLEWARES & BASIC HANDLERS
+    let ignore_self = middleware::IgnoreSelf::new(mm_client.my_user_id().to_string().clone());
     if flag_debug {
         instance.add_middleware(Box::new(middleware::Debug::new("debug")));
     }
+    instance.add_middleware(Box::new(ignore_self));
+
+    let trigger = handlers::trigger::Trigger::new(Rc::clone(&botdb), Rc::clone(&mm_client), tempo.clone(), Duration::from_secs(120));
+    instance.add_post_handler(Box::new(trigger));
+
+    let edits = handlers::edits::Edit::new(Rc::clone(&botdb), Rc::clone(&mm_client));
+    instance.add_post_handler(Box::new(edits));
+
+    // BLAGUES
+    let mut blague_providers: Vec<Box<dyn Blague>> = vec![
+        Box::new(rdb_blague::BadJokes::new()),
+        Box::new(rdb_blague::Sqlite::new(rand::thread_rng(), Rc::clone(&botdb))),
+    ];
+    if let Ok(token) = env::var("BOT_BLAGUESAPI_TOKEN") {
+        let blaguesapi = rdb_blague::BlaguesAPI::new(token.as_str());
+        blague_providers.push(Box::new(blaguesapi));
+    }
+    let rnd_blague = rdb_blague::Select::new(rand::thread_rng(), blague_providers);
+    let blague = handlers::blague::Blague::new(Rc::clone(&botdb), rnd_blague, Rc::clone(&mm_client));
+
+    instance.add_post_handler(Box::new(blague));
+
+    // WEREWOLF GAME
+    let ww = handlers::ww::Handler::new(Rc::clone(&mm_client));
+    instance.add_post_handler(Box::new(ww));
+
+    // SMS
+    if let (Ok(login), Ok(apikey)) = (env::var("BOT_OCTOPUSH_LOGIN"), env::var("BOT_OCTOPUSH_APIKEY")) {
+        let smsprov = handlers::sms::Octopush::new(&login, &apikey);
+        let sms = handlers::sms::SMS::new(smsprov, Rc::clone(&botdb), Rc::clone(&mm_client));
+        instance.add_post_handler(Box::new(sms));
+    }
+
+    // INSTANCE
+    println!("launch bot!");
 
     // RUN FOREVER
     instance.run(receiver.clone())?;
