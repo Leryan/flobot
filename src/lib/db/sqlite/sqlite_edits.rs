@@ -22,9 +22,9 @@ impl crate::db::Edits for super::Sqlite {
     /// # use diesel::prelude::*;
     /// # use diesel::SqliteConnection;
     /// # use flobot::db::sqlite::Sqlite;
-    /// # use flobot::db::{run_migrations, Edits};
+    /// # use flobot::db::Edits;
     /// # let conn = SqliteConnection::establish(":memory:").unwrap();
-    /// # run_migrations(&conn);
+    /// # diesel_migrations::run_pending_migrations(&conn);
     /// # let s = Sqlite::new(conn);
     /// s.add_team("team", "noedit", "noreplace").unwrap();
     /// s.add_team("team", "edit", "replace").unwrap();

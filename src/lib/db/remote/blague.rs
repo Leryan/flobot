@@ -178,9 +178,15 @@ mod tests {
     #[test]
     fn test_blaguesapi_random() -> std::result::Result<(), Error> {
         use dotenv;
-        dotenv::from_filename("flobot.env").ok();
         use std::env;
-        let ba = BlaguesAPI::new(&env::var("BOT_BLAGUESAPI_TOKEN").unwrap());
+        dotenv::from_filename("flobot.env").ok();
+
+        let test_token = env::var("BOT_BLAGUESAPI_TOKEN");
+        if let Err(_) = test_token.clone() {
+            return Ok(());
+        }
+
+        let ba = BlaguesAPI::new(&test_token.unwrap());
         let _ = ba.random("tid")?;
         let _ = ba.random("tid")?;
         Ok(())
