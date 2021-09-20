@@ -11,6 +11,7 @@ use reqwest;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 use std::convert::From;
+use std::env;
 use uuid::Uuid;
 use ws::Result as WSResult;
 use ws::Sender as WSSender;
@@ -303,7 +304,11 @@ impl Sender for Mattermost {
 impl Notifier for Mattermost {
     fn startup(&self, message: &str) -> Result<()> {
         let datetime = chrono::offset::Local::now();
-        let mut post = GenericPost::with_message(&format!("# Startup {:?} (local time)\n{}", datetime, message));
+        let build_hash = env::var("BUILD_GIT_HASH").ok().unwrap_or("UNKNOWN+UNSET (build.rs fail?)".into());
+        let mut post = GenericPost::with_message(&format!(
+            "# Startup {:?} (local time)\n## Build Hash\n * `{}`\n{}",
+            datetime, build_hash, message
+        ));
         post.channel_id = self.cfg.debug_channel.clone();
         self.post(&post)
     }

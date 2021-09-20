@@ -21,6 +21,7 @@ use std::time::Duration;
 embed_migrations!();
 
 fn main() -> std::result::Result<(), Box<dyn std::error::Error>> {
+    println!("Launch version {}", env::var("BUILD_GIT_HASH").unwrap());
     let cli_args: Vec<String> = env::args().collect();
     let mut flag_debug = false;
     println!("Launched with command line arguments: {:?}", cli_args);
