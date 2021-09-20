@@ -11,4 +11,5 @@ pub mod middleware;
 pub mod models;
 pub mod werewolf;
 
+// https://doc.rust-lang.org/nightly/std/macro.env.html - compile time env
 pub const BUILD_GIT_HASH: &'static str = env!("BUILD_GIT_HASH");
