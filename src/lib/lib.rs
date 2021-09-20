@@ -10,3 +10,5 @@ pub mod mattermost;
 pub mod middleware;
 pub mod models;
 pub mod werewolf;
+
+pub const BUILD_GIT_HASH: &'static str = env!("BUILD_GIT_HASH");
