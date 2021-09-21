@@ -96,7 +96,7 @@ impl SequentialTaskRunner {
                 };
             }
 
-            thread::sleep(Duration::from_secs(10));
+            thread::sleep(Duration::from_secs(1));
         }
     }
 
@@ -153,30 +153,30 @@ impl<S: crate::client::Sender> Task for Meteo<S> {
 
     fn exec(&self, now: Now) -> Result<ExecIn, Error> {
         let mut msg = String::from("Mééééééééééééétéoooooooooooo :\n");
-        let cities = format!("{{{}}}", self.cities.join(","));
-        let url = format!("https://wttr.in/{}", cities);
-        let r = Client::new().get(&url).query(&[("format", "\" * %l: %c %t\n\"")]).send();
-        println!("{:?}", r);
 
-        match r {
-            Err(e) => {
-                println!("{:?}", e);
-                if let Some(status) = e.status() {
-                    if status == reqwest::StatusCode::SERVICE_UNAVAILABLE {
-                        return Err(Error::ExpRetry("service unavailable".into()));
-                    }
-                }
+        for city in self.cities.iter() {
+            let url = format!("https://wttr.in/{}", city);
+            let r = Client::new().get(&url).query(&[("format", "%l: %c %t")]).send();
 
+            if let Err(e) = r {
                 return Err(Error::CannotExec((Duration::from_secs(24 * 3600), e.to_string())));
             }
-            Ok(v) => {
-                msg.push_str(&v.text().unwrap());
-                let mut post = GenericPost::with_message(&msg);
-                post.channel_id = self.on_channel_id.to_string();
-                if self.client.post(&post).is_err() {
-                    return Err(Error::ExpRetry("cannot post".into()));
-                }
+
+            let v = r.unwrap();
+            if v.status().is_client_error() {
+                return Err(Error::CannotExec((Duration::from_secs(24 * 3600), v.status().to_string())));
             }
+            if v.status().is_server_error() {
+                return Err(Error::ExpRetry(v.status().to_string()));
+            }
+
+            msg.push_str(&format!(" * {}\n", &v.text().unwrap()));
+        }
+
+        let mut post = GenericPost::with_message(&msg);
+        post.channel_id = self.on_channel_id.to_string();
+        if self.client.post(&post).is_err() {
+            return Err(Error::ExpRetry("cannot post".into()));
         }
 
         let tomorrow = now.with_hour(7).unwrap().with_minute(23).unwrap() + cduration_from_secs(24 * 3600);
