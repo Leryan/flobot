@@ -151,7 +151,7 @@ impl Into<GenericStatus> for Status {
     }
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, Clone)]
 pub struct Me {
     pub id: String,
     pub username: String,

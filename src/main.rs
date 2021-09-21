@@ -13,8 +13,10 @@ use flobot::handlers;
 use flobot::instance::Instance;
 use flobot::mattermost::Mattermost;
 use flobot::middleware;
+use flobot::task::*;
 use std::env;
 use std::rc::Rc;
+use std::sync::Arc;
 use std::thread;
 use std::time::Duration;
 
@@ -33,22 +35,9 @@ fn main() -> std::result::Result<(), Box<dyn std::error::Error>> {
 
     dotenv::from_filename("flobot.env").ok();
     let cfg = Conf::new().expect("cfg err");
-
     let mm = Mattermost::new(cfg.clone())?;
 
     let db_url: &str = &cfg.db_url;
-
-    let (sender, receiver) = unbounded();
-    let wg = WaitGroup::new();
-
-    {
-        let wg = wg.clone();
-        thread::spawn(move || {
-            println!("launch client thread");
-            mm.listen(sender);
-            drop(wg);
-        });
-    }
 
     println!("run db migrations");
     let conn = db::conn(db_url);
@@ -105,11 +94,49 @@ fn main() -> std::result::Result<(), Box<dyn std::error::Error>> {
     println!("launch bot!");
 
     // RUN FOREVER
-    instance.run(receiver.clone())?;
 
-    drop(botdb);
+    let (sender, receiver) = unbounded();
+    let wg = WaitGroup::new();
+    {
+        let wg = wg.clone();
+        thread::spawn(move || {
+            println!("launch client thread");
+            mm.listen(sender);
+            println!("client thread returned");
+            drop(wg);
+        });
+    }
+
+    let tr_mm_client = Mattermost::new(cfg.clone())?;
+    let mut tr = SequentialTaskRunner::new();
+    tr.add(Box::new(Tick {}));
+
+    if let (Ok(cities), Ok(channel)) = (env::var("BOT_METEO_CITIES"), env::var("BOT_METEO_ON_CHANNEL_ID")) {
+        let cities = cities.split(',').map(|p| p.to_string()).collect();
+        println!("exec meteo in {:?}", tr.add(Box::new(Meteo::new(cities, tr_mm_client, &channel))));
+    }
+
+    let taskrunner = Arc::new(tr);
+    {
+        let tr = Arc::clone(&taskrunner);
+        let wg = wg.clone();
+        thread::spawn(move || {
+            println!("launch task runner");
+            tr.run_forever();
+            println!("task runner returned");
+            drop(wg);
+        });
+    }
+
+    if let Err(e) = instance.run(receiver.clone()) {
+        println!("instance returned: {:?}", e);
+    }
+
+    println!("stopping task runner");
+    taskrunner.stop();
     println!("waiting for listener to stop");
     wg.wait();
+    drop(botdb);
 
     Ok(())
 }

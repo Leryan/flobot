@@ -54,7 +54,7 @@ impl<T: Hash + Eq> Tempo<T> {
         store.insert(key, expire_in);
     }
 
-    pub fn exists(&self, key: T) -> bool {
+    pub fn exists(&self, key: &T) -> bool {
         let mut store = self.store.lock().unwrap();
         let res = store.get(&key);
         match res {

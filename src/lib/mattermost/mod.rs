@@ -129,6 +129,7 @@ impl From<reqwest::Error> for Error {
     }
 }
 
+#[derive(Clone)]
 pub struct Mattermost {
     cfg: Conf,
     me: MMMe,

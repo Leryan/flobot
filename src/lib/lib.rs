@@ -9,6 +9,7 @@ pub mod instance;
 pub mod mattermost;
 pub mod middleware;
 pub mod models;
+pub mod task;
 pub mod werewolf;
 
 // https://doc.rust-lang.org/nightly/std/macro.env.html - compile time env

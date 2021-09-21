@@ -59,7 +59,7 @@ where
 
         if !message.starts_with("!trigger ") {
             let tempo_rate = format!("{}{}--rate-limit", &post.team_id, &post.channel_id);
-            if self.tempo.exists(tempo_rate.clone()) {
+            if self.tempo.exists(&tempo_rate) {
                 return Ok(());
             } else {
                 self.tempo.set(tempo_rate.clone(), Duration::from_secs(3));
@@ -74,7 +74,7 @@ where
                     let tempo_key = format!("{}{}{}", &post.team_id, &post.channel_id, tb);
 
                     // sending this trigger has been delayed
-                    if self.tempo.exists(tempo_key.clone()) {
+                    if self.tempo.exists(&tempo_key) {
                         self.tempo.set(tempo_key.clone(), self.delay_repeat);
                         continue;
                     }
