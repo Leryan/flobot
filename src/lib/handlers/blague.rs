@@ -47,14 +47,15 @@ where
     fn name(&self) -> &str {
         "blague"
     }
-    fn help(&self) -> Option<&str> {
+    fn help(&self) -> Option<String> {
         Some(
             "```
 !blague # raconte une blague
 !blague <une blague> # enregistre une nouvelle blague
 !blague list
 !blague del <num>
-```",
+```"
+            .to_string(),
         )
     }
 

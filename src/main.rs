@@ -49,7 +49,6 @@ fn main() -> std::result::Result<(), Box<dyn std::error::Error>> {
     let mm_client = Rc::new(Mattermost::new(cfg.clone())?);
     let client = Rc::clone(&mm_client);
     let botdb = Rc::new(dbs::Sqlite::new(conn));
-    let tempo = Tempo::new();
     let mut instance = Instance::new(client);
 
     // MIDDLEWARES & BASIC HANDLERS
@@ -59,7 +58,14 @@ fn main() -> std::result::Result<(), Box<dyn std::error::Error>> {
     }
     instance.add_middleware(Box::new(ignore_self));
 
-    let trigger = handlers::trigger::Trigger::new(Rc::clone(&botdb), Rc::clone(&mm_client), tempo.clone(), Duration::from_secs(120));
+    let trigger_delay_secs = Duration::from_secs(
+        std::env::var("BOT_TRIGGER_DELAY_SECONDS")
+            .unwrap_or("0".to_string())
+            .parse()
+            .unwrap(),
+    );
+    println!("trigger configured with delay of {} seconds", trigger_delay_secs.as_secs());
+    let trigger = handlers::trigger::Trigger::new(Rc::clone(&botdb), Rc::clone(&mm_client), Tempo::new(), trigger_delay_secs);
     instance.add_post_handler(Box::new(trigger));
 
     let edits = handlers::edits::Edit::new(Rc::clone(&botdb), Rc::clone(&mm_client));

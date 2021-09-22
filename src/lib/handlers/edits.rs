@@ -128,14 +128,15 @@ where
     fn name(&self) -> &str {
         "edits"
     }
-    fn help(&self) -> Option<&str> {
+    fn help(&self) -> Option<String> {
         Some(
             "```
 !edits list
 !edits add \"edit\" \"replace\"
 !edits del \"edit\"
 !e edit
-```",
+```"
+            .to_string(),
         )
     }
 

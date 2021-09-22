@@ -274,14 +274,15 @@ where
         "werewolf"
     }
 
-    fn help(&self) -> Option<&str> {
+    fn help(&self) -> Option<String> {
         Some(
             "### Jeu du loup garou
 
  * Commencer une partie avec `!ww start`
  * Joindre une partie annoncée avec `!ww join`
  * Quand le bot annonce que la partie peut être lancée, suivre les instructions :)
-",
+"
+            .to_string(),
         )
     }
 

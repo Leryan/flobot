@@ -3,7 +3,11 @@ use crate::db;
 use crate::db::tempo::Tempo;
 use crate::handlers::{Handler, Result};
 use crate::models::GenericPost;
+use crate::models::Trigger as MTrigger;
+use regex::escape as escape_re;
 use regex::Regex;
+use std::cell::RefCell;
+use std::collections::HashMap;
 use std::rc::Rc;
 use std::time::Duration;
 
@@ -16,6 +20,7 @@ pub struct Trigger<C, E> {
     match_reaction: Regex,
     tempo: Tempo<String>,
     delay_repeat: Duration,
+    trig_cache: RefCell<HashMap<String, Regex>>,
 }
 
 impl<C, E> Trigger<C, E> {
@@ -29,7 +34,32 @@ impl<C, E> Trigger<C, E> {
             match_del: Regex::new("^!trigger del \"(.+)\".*").unwrap(),
             match_reaction: Regex::new("^!trigger reaction \"([^\"]+)\" [:\"]([^:]+)[:\"].*$").unwrap(),
             match_text: Regex::new("^!trigger text \"([^\"]+)\" \"([^\"]+)\".*$").unwrap(),
+            trig_cache: RefCell::new(HashMap::new()),
         }
+    }
+
+    pub fn compile_trigger(&self, trigger: &str) -> std::result::Result<Regex, regex::Error> {
+        let re = format!("(?ms)^.*{}.*$", escape_re(trigger));
+        Regex::new(&re)
+    }
+
+    pub fn match_trigger(&self, message: &str, trigger: &String) -> bool {
+        if !self.trig_cache.borrow().contains_key(trigger) {
+            match self.compile_trigger(trigger) {
+                Ok(re) => {
+                    self.trig_cache.borrow_mut().insert(trigger.clone(), re);
+                }
+                Err(_) => {
+                    // this case should never happen if compile_trigger was used before inserting.
+                    // but old data or manual inserts can break this assumption.
+                    return false;
+                }
+            };
+        }
+
+        // at this point the insertion was successful, so we can get a second time
+        // an safely .unwrap(). TODO: use brain and do it more cleverly.
+        self.trig_cache.borrow().get(trigger).unwrap().is_match(message)
     }
 }
 
@@ -43,49 +73,61 @@ where
     fn name(&self) -> &str {
         "trigger"
     }
-    fn help(&self) -> Option<&str> {
-        Some(
+
+    fn help(&self) -> Option<String> {
+        Some(format!(
             "```
+Automatically react to a given text in each received message on channels where the bot is present.
+
+There is a per channel antispam of 3 seconds, avoiding a heated channel to be polluted by the bot.
+
+A per [channel, trigger] antispam is effective and currently configured at {} seconds.
+
 !trigger list
-!trigger text \"trigger\" \"me\"\
+!trigger text \"trigger\" \"me\"
 !trigger reaction \"trigger\" :emoji:
 !trigger del \"trigger\"
 ```",
-        )
+            self.delay_repeat.as_secs()
+        ))
     }
 
     fn handle(&self, post: &GenericPost) -> Result {
         let message = post.message.as_str();
 
         if !message.starts_with("!trigger ") {
-            let tempo_rate = format!("{}{}--rate-limit", &post.team_id, &post.channel_id);
+            // check or set a per channel rate limit to avoid spamming in heated discussions.
+            let tempo_rate = format!("{}{}--global-channel-rate-limit", &post.team_id, &post.channel_id);
             if self.tempo.exists(&tempo_rate) {
                 return Ok(());
-            } else {
-                self.tempo.set(tempo_rate.clone(), Duration::from_secs(3));
             }
-            let res = self.db.search(&post.team_id)?;
-            for t in res {
-                let tb = &t.triggered_by;
-                let tb_word = &format!(" {} ", tb);
-                let tb_start = &format!("{} ", tb);
-                let tb_end = &format!(" {}", tb);
-                if message.contains(tb_word) || message.starts_with(tb_start) || message.ends_with(tb_end) || message == t.triggered_by {
-                    let tempo_key = format!("{}{}{}", &post.team_id, &post.channel_id, tb);
+            self.tempo.set(tempo_rate.clone(), Duration::from_secs(3));
 
-                    // sending this trigger has been delayed
-                    if self.tempo.exists(&tempo_key) {
-                        self.tempo.set(tempo_key.clone(), self.delay_repeat);
-                        continue;
-                    }
-                    self.tempo.set(tempo_key.clone(), self.delay_repeat);
+            // search for triggers in the message
+            let team_triggers = self.db.search(&post.team_id)?;
+            for t in team_triggers
+                .iter()
+                .filter(|tt| self.match_trigger(&post.message, &tt.triggered_by))
+                .collect::<Vec<&MTrigger>>()
+            {
+                let tempo_key = format!(
+                    "{}{}{}--trigger-channel-rate-limit",
+                    &post.team_id, &post.channel_id, t.triggered_by
+                );
 
-                    if t.text_.is_some() {
-                        self.client.reply(post, &t.text_.unwrap())?;
-                        break; // text is sorted after emoji, so we can break here: emoji were already processed.
-                    } else {
-                        self.client.reaction(post, &t.emoji.unwrap())?;
-                    }
+                // sending this trigger has been delayed
+                if self.tempo.exists(&tempo_key) {
+                    continue;
+                }
+                self.tempo.set(tempo_key.clone(), self.delay_repeat);
+
+                if t.text_.is_some() {
+                    // text is sorted after emoji, so we can break here: emoji were already processed.
+                    self.client.reply(post, t.text_.as_ref().unwrap())?;
+                    break;
+                } else {
+                    // send all emoji reactions
+                    self.client.reaction(post, &t.emoji.as_ref().unwrap())?;
                 }
             }
             return Ok(());
@@ -98,9 +140,14 @@ where
 
         match self.match_text.captures(message) {
             Some(captures) => {
-                let _ = self
-                    .db
-                    .add_text(&post.team_id, captures.get(1).unwrap().as_str(), captures.get(2).unwrap().as_str());
+                let trigger = captures.get(1).unwrap().as_str();
+
+                // prevent insertion of broken triggers.
+                if let Err(e) = self.compile_trigger(trigger) {
+                    return Ok(self.client.reply(post, &e.to_string())?);
+                }
+
+                let _ = self.db.add_text(&post.team_id, trigger, captures.get(2).unwrap().as_str());
                 return Ok(self.client.reaction(post, "ok_hand")?);
             }
             None => {}
@@ -108,9 +155,14 @@ where
 
         match self.match_reaction.captures(message) {
             Some(captures) => {
-                let _ = self
-                    .db
-                    .add_emoji(&post.team_id, captures.get(1).unwrap().as_str(), captures.get(2).unwrap().as_str());
+                let trigger = captures.get(1).unwrap().as_str();
+
+                // prevent insertion of broken triggers.
+                if let Err(e) = self.compile_trigger(trigger) {
+                    return Ok(self.client.reply(post, &e.to_string())?);
+                }
+
+                let _ = self.db.add_emoji(&post.team_id, trigger, captures.get(2).unwrap().as_str());
                 return Ok(self.client.reaction(post, "ok_hand")?);
             }
             None => {}

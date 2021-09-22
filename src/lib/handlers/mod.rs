@@ -52,7 +52,7 @@ pub type Result = std::result::Result<(), Error>;
 pub trait Handler {
     type Data;
     fn name(&self) -> &str;
-    fn help(&self) -> Option<&str>;
+    fn help(&self) -> Option<String>;
     fn handle(&self, data: &Self::Data) -> Result;
 }
 
@@ -72,7 +72,7 @@ impl Handler for Debug {
     fn name(&self) -> &str {
         "debug"
     }
-    fn help(&self) -> Option<&str> {
+    fn help(&self) -> Option<String> {
         None
     }
 

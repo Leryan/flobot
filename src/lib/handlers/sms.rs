@@ -110,7 +110,7 @@ impl<S: SMSSender, D: db::SMS, C: client::Sender> Handler for SMS<S, D, C> {
         "sms"
     }
 
-    fn help(&self) -> Option<&str> {
+    fn help(&self) -> Option<String> {
         Some("Envoyer des sms.
 
  * **Pour un usage raisonné et responsable.** Oui c'est cliché mais le contenu des messages devient ma responsabilité :)
@@ -153,7 +153,7 @@ Exemple :
  * L'envoi n'est pas garanti si le message contient des caractères exotiques, ça devrait quand même passer m'enfin attention.
  * Le service est payant, merci de ne pas en abuser :) On peut toujours s'arranger mais prévenez-moi avant :D
 
-")
+".to_string())
     }
 
     fn handle(&self, post: &GenericPost) -> Result {
