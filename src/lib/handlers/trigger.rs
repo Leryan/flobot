@@ -11,6 +11,42 @@ use std::collections::HashMap;
 use std::rc::Rc;
 use std::time::Duration;
 
+pub fn compile_trigger(trigger: &str) -> std::result::Result<Regex, regex::Error> {
+    let re = format!("(?ms)^.*({}).*$", escape_re(trigger));
+    Regex::new(&re)
+}
+
+pub fn valid_match(re: &Regex, message: &str) -> bool {
+    let captures = re.captures(message);
+
+    if captures.is_none() {
+        return false;
+    }
+
+    if let Some(capture) = captures.unwrap().get(1) {
+        if capture.start() == 0 {
+            if let Some(after) = message[capture.end()..].chars().next() {
+                return after.is_whitespace();
+            }
+            return true;
+        }
+
+        if capture.end() == message.as_bytes().len() {
+            if let Some(before) = message[capture.start() - 1..].chars().next() {
+                return before.is_whitespace();
+            }
+            return true;
+        }
+
+        let mut chars = message.chars();
+        let cs = chars.nth(capture.start() - 1).unwrap();
+        let ce = chars.nth(capture.end() - capture.start()).unwrap();
+        return cs.is_whitespace() && ce.is_whitespace();
+    }
+
+    false
+}
+
 pub struct Trigger<C, E> {
     db: Rc<E>,
     client: Rc<C>,
@@ -38,14 +74,9 @@ impl<C, E> Trigger<C, E> {
         }
     }
 
-    pub fn compile_trigger(&self, trigger: &str) -> std::result::Result<Regex, regex::Error> {
-        let re = format!("(?ms)^.*{}.*$", escape_re(trigger));
-        Regex::new(&re)
-    }
-
     pub fn match_trigger(&self, message: &str, trigger: &String) -> bool {
         if !self.trig_cache.borrow().contains_key(trigger) {
-            match self.compile_trigger(trigger) {
+            match compile_trigger(trigger) {
                 Ok(re) => {
                     self.trig_cache.borrow_mut().insert(trigger.clone(), re);
                 }
@@ -59,7 +90,9 @@ impl<C, E> Trigger<C, E> {
 
         // at this point the insertion was successful, so we can get a second time
         // an safely .unwrap(). TODO: use brain and do it more cleverly.
-        self.trig_cache.borrow().get(trigger).unwrap().is_match(message)
+        let b = self.trig_cache.borrow();
+        let re = b.get(trigger).unwrap();
+        return valid_match(re, message);
     }
 }
 
@@ -143,7 +176,7 @@ A per [channel, trigger] antispam is effective and currently configured at {} se
                 let trigger = captures.get(1).unwrap().as_str();
 
                 // prevent insertion of broken triggers.
-                if let Err(e) = self.compile_trigger(trigger) {
+                if let Err(e) = compile_trigger(trigger) {
                     return Ok(self.client.reply(post, &e.to_string())?);
                 }
 
@@ -158,7 +191,7 @@ A per [channel, trigger] antispam is effective and currently configured at {} se
                 let trigger = captures.get(1).unwrap().as_str();
 
                 // prevent insertion of broken triggers.
-                if let Err(e) = self.compile_trigger(trigger) {
+                if let Err(e) = compile_trigger(trigger) {
                     return Ok(self.client.reply(post, &e.to_string())?);
                 }
 
@@ -177,5 +210,43 @@ A per [channel, trigger] antispam is effective and currently configured at {} se
         }
 
         Ok(())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn vm(message: &str) -> bool {
+        let re = compile_trigger("trig").unwrap();
+        valid_match(&re, message)
+    }
+
+    #[test]
+    fn test_valid_match_left() {
+        assert!(vm("trig "));
+        assert!(vm("trig yes"));
+        assert!(!vm("trigno"));
+    }
+
+    #[test]
+    fn test_valid_match_end() {
+        assert!(vm(" trig"));
+        assert!(vm("ye trig"));
+        assert!(!vm("notrig"));
+    }
+
+    #[test]
+    fn test_valid_match_between() {
+        assert!(vm("trig"));
+        assert!(vm(" trig "));
+        assert!(vm("yes trig yes"));
+        assert!(!vm("notrigno"));
+    }
+
+    #[test]
+    fn test_valid_match_nbsp() {
+        // TODO: support nbsp
+        assert!(!vm("nbsp\u{A0}trig\u{A0}nbsp"));
     }
 }
