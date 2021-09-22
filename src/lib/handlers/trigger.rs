@@ -167,6 +167,7 @@ A per [channel, trigger] antispam is effective and currently configured at {} se
             }
             None => {}
         }
+
         match self.match_del.captures(message) {
             Some(captures) => {
                 let _ = self.db.del(&post.team_id, captures.get(1).unwrap().as_str())?;

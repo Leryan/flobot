@@ -11,7 +11,7 @@ use flobot::db::sqlite as dbs;
 use flobot::db::tempo::Tempo;
 use flobot::handlers;
 use flobot::instance::Instance;
-use flobot::mattermost::Mattermost;
+use flobot::mattermost::client::Mattermost;
 use flobot::middleware;
 use flobot::task::*;
 use std::env;

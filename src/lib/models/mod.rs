@@ -87,7 +87,7 @@ pub struct GenericUser {
     pub display_name: String,
 }
 
-pub struct Me {
+pub struct GenericMe {
     pub id: String,
 }
 

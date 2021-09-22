@@ -7,9 +7,74 @@ use crate::models::{GenericEvent, GenericHello, GenericUser};
 use serde::{Deserialize, Serialize};
 use std::convert::Into;
 
+#[derive(Serialize)]
+pub struct Metadata {}
+
+#[derive(Serialize)]
+pub struct Props {}
+
+#[derive(Serialize)]
+pub struct NewPost<'a> {
+    pub channel_id: String,
+    pub create_at: u64,
+    pub file_ids: Vec<String>,
+    pub message: &'a str,
+    pub metadata: Metadata,
+    pub props: Props,
+    pub update_at: u64,
+    pub user_id: String,
+    pub root_id: Option<String>,
+    pub parent_id: Option<String>,
+}
+
+#[derive(Deserialize, Serialize)]
+pub struct Post {
+    pub id: String,
+    pub message: String,
+    pub create_at: u64,
+    pub update_at: u64,
+    pub edit_at: u64,
+    pub delete_at: u64,
+    pub is_pinned: bool,
+    pub user_id: String,
+    pub channel_id: String,
+    pub root_id: String,
+    pub parent_id: String,
+    pub original_id: String,
+}
+
+#[derive(Debug, Serialize)]
+pub struct CreateChannel<'a> {
+    pub team_id: &'a str,
+    pub name: &'a str,
+    pub display_name: &'a str,
+    #[serde(rename = "type")]
+    pub type_: &'a str,
+}
+
+#[derive(Serialize)]
+pub struct Reaction {
+    pub user_id: String,
+    pub post_id: String,
+    pub emoji_name: String,
+}
+
+#[derive(Deserialize, Debug)]
+pub struct GenericID {
+    pub id: String,
+    pub status_code: Option<usize>,
+    pub message: Option<String>,
+    pub request_id: Option<String>,
+}
+
+#[derive(Serialize)]
+pub struct UserID {
+    pub user_id: String,
+}
+
 #[derive(Serialize, Deserialize)]
 pub struct Auth {
-    token: String,
+    pub token: String,
 }
 
 #[derive(Serialize)]
@@ -20,44 +85,28 @@ pub struct PostEdit<'a> {
 
 #[derive(Deserialize, Serialize)]
 pub struct Hello {
-    server_version: String,
-}
-
-#[derive(Deserialize, Serialize)]
-struct Post {
-    id: String,
-    message: String,
-    create_at: u64,
-    update_at: u64,
-    edit_at: u64,
-    delete_at: u64,
-    is_pinned: bool,
-    user_id: String,
-    channel_id: String,
-    root_id: String,
-    parent_id: String,
-    original_id: String,
+    pub server_version: String,
 }
 
 #[derive(Clone, Deserialize)]
 pub struct User {
-    id: String,
-    username: String,
+    pub id: String,
+    pub username: String,
 }
 
 #[derive(Deserialize, Serialize)]
 pub struct Posted {
-    channel_display_name: String,
-    channel_name: String,
-    channel_type: String,
-    post: String,
-    sender_name: String,
-    team_id: String,
+    pub channel_display_name: String,
+    pub channel_name: String,
+    pub channel_type: String,
+    pub post: String,
+    pub sender_name: String,
+    pub team_id: String,
 }
 
 #[derive(Deserialize, Serialize)]
 pub struct PostEdited {
-    post: String,
+    pub post: String,
 }
 
 #[derive(Deserialize, Serialize, Debug)]
@@ -68,12 +117,12 @@ pub struct Status {
 
 #[derive(Deserialize, Serialize, Debug)]
 pub struct StatusDetails {
-    id: String,
-    message: String,
-    detailed_error: String,
-    request_id: Option<String>,
-    status_code: f64,
-    is_oauth: Option<bool>,
+    pub id: String,
+    pub message: String,
+    pub detailed_error: String,
+    pub request_id: Option<String>,
+    pub status_code: f64,
+    pub is_oauth: Option<bool>,
 }
 
 impl Into<GenericPostEdited> for PostEdited {
@@ -172,10 +221,10 @@ pub enum EventData {
 
 #[derive(Serialize, Deserialize)]
 pub struct Broadcast {
-    channel_id: String,
-    omit_users: Option<String>,
-    team_id: String,
-    user_id: String,
+    pub channel_id: String,
+    pub omit_users: Option<String>,
+    pub team_id: String,
+    pub user_id: String,
 }
 
 #[derive(Serialize, Deserialize)]
@@ -224,7 +273,7 @@ impl Into<GenericEvent> for MetaEvent {
 
 #[cfg(test)]
 mod tests {
-    use crate::mattermost::*;
+    use super::*;
 
     #[test]
     fn post_valid() {
