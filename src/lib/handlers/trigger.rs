@@ -192,19 +192,11 @@ mod tests {
     }
 
     #[test]
-    fn test_valid_match_left() {
+    fn test_valid_match_yes() {
         assert!(vm("trig "));
-        assert!(vm("trig yes"));
-    }
-
-    #[test]
-    fn test_valid_match_end() {
         assert!(vm(" trig"));
-        assert!(vm("ye trig"));
-    }
-
-    #[test]
-    fn test_valid_match_between() {
+        assert!(vm("trig yes"));
+        assert!(vm("yes trig"));
         assert!(vm("trig"));
         assert!(vm(" trig "));
         assert!(vm("yes trig yes"));
@@ -217,10 +209,14 @@ mod tests {
 
     #[test]
     fn test_valid_match_nope() {
-        assert!(!vm(" trigno"));
-        assert!(!vm("trigno "));
-        assert!(!vm("trigno"));
-        assert!(!vm("notrig"));
-        assert!(!vm("notrigno"));
+        assert!(!vm("n trign n"));
+        assert!(!vm("n ntrig n"));
+        assert!(!vm(" ntrig"));
+        assert!(!vm(" trign"));
+        assert!(!vm("ntrig "));
+        assert!(!vm("trign "));
+        assert!(!vm("trign"));
+        assert!(!vm("ntrig"));
+        assert!(!vm("ntrign"));
     }
 }
