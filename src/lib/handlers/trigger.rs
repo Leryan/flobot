@@ -24,7 +24,9 @@ pub fn valid_match(find: &str, message: &str) -> bool {
     let end = start + find.len() - 1;
 
     if start > 0 {
-        return message.as_bytes()[start - 1].is_ascii_whitespace();
+        if !message.as_bytes()[start - 1].is_ascii_whitespace() {
+            return false;
+        }
     }
 
     if let Some(c) = message.as_bytes().get(end + 1) {
@@ -193,14 +195,12 @@ mod tests {
     fn test_valid_match_left() {
         assert!(vm("trig "));
         assert!(vm("trig yes"));
-        assert!(!vm("trigno"));
     }
 
     #[test]
     fn test_valid_match_end() {
         assert!(vm(" trig"));
         assert!(vm("ye trig"));
-        assert!(!vm("notrig"));
     }
 
     #[test]
@@ -208,11 +208,19 @@ mod tests {
         assert!(vm("trig"));
         assert!(vm(" trig "));
         assert!(vm("yes trig yes"));
-        assert!(!vm("notrigno"));
     }
 
     #[test]
     fn test_valid_match_nbsp() {
         assert!(!vm("no\u{A0}trig\u{A0}no"));
+    }
+
+    #[test]
+    fn test_valid_match_nope() {
+        assert!(!vm(" trigno"));
+        assert!(!vm("trigno "));
+        assert!(!vm("trigno"));
+        assert!(!vm("notrig"));
+        assert!(!vm("notrigno"));
     }
 }
