@@ -6,8 +6,6 @@ use crate::models::GenericPost;
 use crate::models::Trigger as MTrigger;
 use regex::escape as escape_re;
 use regex::Regex;
-use std::cell::RefCell;
-use std::collections::HashMap;
 use std::rc::Rc;
 use std::time::Duration;
 
@@ -16,35 +14,28 @@ pub fn compile_trigger(trigger: &str) -> std::result::Result<Regex, regex::Error
     Regex::new(&re)
 }
 
-pub fn valid_match(re: &Regex, message: &str) -> bool {
-    let captures = re.captures(message);
-
-    if captures.is_none() {
+pub fn valid_match(find: &str, message: &str) -> bool {
+    let captured = message.find(find);
+    if captured.is_none() {
         return false;
     }
 
-    if let Some(capture) = captures.unwrap().get(1) {
-        if capture.start() == 0 {
-            if let Some(after) = message[capture.end()..].chars().next() {
-                return after.is_whitespace();
-            }
-            return true;
-        }
+    let start = captured.unwrap();
+    let end = start + find.len() - 1;
 
-        if capture.end() == message.as_bytes().len() {
-            if let Some(before) = message[capture.start() - 1..].chars().next() {
-                return before.is_whitespace();
-            }
-            return true;
+    if start > 0 {
+        if !message.as_bytes()[start - 1].is_ascii_whitespace() {
+            return false;
         }
-
-        let mut chars = message.chars();
-        let cs = chars.nth(capture.start() - 1).unwrap();
-        let ce = chars.nth(capture.end() - capture.start()).unwrap();
-        return cs.is_whitespace() && ce.is_whitespace();
     }
 
-    false
+    if end + 1 < message.len() {
+        if !message.as_bytes()[end + 1].is_ascii_whitespace() {
+            return false;
+        }
+    }
+
+    true
 }
 
 pub struct Trigger<C, E> {
@@ -56,7 +47,6 @@ pub struct Trigger<C, E> {
     match_reaction: Regex,
     tempo: Tempo<String>,
     delay_repeat: Duration,
-    trig_cache: RefCell<HashMap<String, Regex>>,
 }
 
 impl<C, E> Trigger<C, E> {
@@ -70,29 +60,11 @@ impl<C, E> Trigger<C, E> {
             match_del: Regex::new("^!trigger del \"(.+)\".*").unwrap(),
             match_reaction: Regex::new("^!trigger reaction \"([^\"]+)\" [:\"]([^:]+)[:\"].*$").unwrap(),
             match_text: Regex::new("^!trigger text \"([^\"]+)\" \"([^\"]+)\".*$").unwrap(),
-            trig_cache: RefCell::new(HashMap::new()),
         }
     }
 
     pub fn match_trigger(&self, message: &str, trigger: &String) -> bool {
-        if !self.trig_cache.borrow().contains_key(trigger) {
-            match compile_trigger(trigger) {
-                Ok(re) => {
-                    self.trig_cache.borrow_mut().insert(trigger.clone(), re);
-                }
-                Err(_) => {
-                    // this case should never happen if compile_trigger was used before inserting.
-                    // but old data or manual inserts can break this assumption.
-                    return false;
-                }
-            };
-        }
-
-        // at this point the insertion was successful, so we can get a second time
-        // an safely .unwrap(). TODO: use brain and do it more cleverly.
-        let b = self.trig_cache.borrow();
-        let re = b.get(trigger).unwrap();
-        return valid_match(re, message);
+        return valid_match(trigger, message);
     }
 }
 
@@ -218,8 +190,7 @@ mod tests {
     use super::*;
 
     fn vm(message: &str) -> bool {
-        let re = compile_trigger("trig").unwrap();
-        valid_match(&re, message)
+        valid_match("trig", message)
     }
 
     #[test]
@@ -246,7 +217,6 @@ mod tests {
 
     #[test]
     fn test_valid_match_nbsp() {
-        // TODO: support nbsp
-        assert!(!vm("nbsp\u{A0}trig\u{A0}nbsp"));
+        assert!(!vm("no\u{A0}trig\u{A0}no"));
     }
 }
