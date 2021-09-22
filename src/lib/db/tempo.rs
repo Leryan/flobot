@@ -23,22 +23,19 @@ pub struct Tempo<T> {
 /// # use flobot::db::tempo::Tempo;
 /// # use std::thread::sleep;
 /// use std::time::Duration;
-/// # let mut tempo = Tempo::new();
-/// assert_eq!(false, tempo.exists("try"));
+/// let mut tempo = Tempo::new();
+/// let k1 = String::from("try");
+/// let kexp = String::from("expire");
+/// assert_eq!(false, tempo.exists(&k1));
 ///
-/// tempo.set("try", Duration::from_secs(1));
-/// assert_eq!(true, tempo.exists("try"));
+/// tempo.set(k1.clone(), Duration::from_secs(1));
+/// assert_eq!(true, tempo.exists(&k1));
 ///
-/// tempo.set("expire", Duration::from_millis(100));
-/// assert_eq!(true, tempo.exists("expire"));
+/// tempo.set(kexp.clone(), Duration::from_millis(100));
+/// assert_eq!(true, tempo.exists(&kexp));
 ///
 /// sleep(Duration::from_millis(101));
-/// assert_eq!(false, tempo.exists("expire"));
-///
-/// // Share your tempo to other threads.
-/// let mut ctempo = tempo.clone(); // move this one to your new thread
-/// tempo.set("cloned", Duration::from_secs(1)); // "main" thread sets a key
-/// assert_eq!(true, ctempo.exists("cloned")); // this key is available in the other thread
+/// assert_eq!(false, tempo.exists(&kexp));
 /// # }
 /// ```
 impl<T: Hash + Eq> Tempo<T> {
