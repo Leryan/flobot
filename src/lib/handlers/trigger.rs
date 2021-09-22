@@ -24,15 +24,11 @@ pub fn valid_match(find: &str, message: &str) -> bool {
     let end = start + find.len() - 1;
 
     if start > 0 {
-        if !message.as_bytes()[start - 1].is_ascii_whitespace() {
-            return false;
-        }
+        return message.as_bytes()[start - 1].is_ascii_whitespace();
     }
 
-    if end + 1 < message.len() {
-        if !message.as_bytes()[end + 1].is_ascii_whitespace() {
-            return false;
-        }
+    if let Some(c) = message.as_bytes().get(end + 1) {
+        return c.is_ascii_whitespace();
     }
 
     true
