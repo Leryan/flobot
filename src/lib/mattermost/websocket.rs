@@ -62,11 +62,7 @@ impl EventClient for super::client::Mattermost {
             }) {
                 match e.kind {
                     ws::ErrorKind::Io(details) => {
-                        println!(
-                            "websocket disconnected, will attempt to reconnect in {} seconds. error detail: {:?}",
-                            reco_time.as_secs(),
-                            details
-                        );
+                        println!("websocket io error: {:?}", details);
                     }
                     e => {
                         println!("websocket disconnected with unrecoverable error: {:?}", e);
@@ -78,6 +74,8 @@ impl EventClient for super::client::Mattermost {
             if retry {
                 println!("websocket returned, retrying in {} seconds", reco_time.as_secs());
                 std::thread::sleep(reco_time);
+            } else {
+                return;
             }
         }
     }
