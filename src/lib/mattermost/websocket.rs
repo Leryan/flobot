@@ -22,7 +22,13 @@ impl Handler for MattermostWS {
             "data": {"token": self.token.clone()},
             "seq": self.seq,
         });
-        self.out.send(Message::Text(auth.to_string()))
+        let res = self.out.send(Message::Text(auth.to_string()));
+
+        if res.is_ok() {
+            println!("websocket connected!");
+        }
+
+        res
     }
 
     fn on_message(&mut self, msg: Message) -> WSResult<()> {
@@ -43,12 +49,36 @@ impl EventClient for super::client::Mattermost {
     fn listen(&self, sender: ChannelSender<GenericEvent>) {
         let mut url = self.cfg.ws_url.clone();
         url.push_str("/api/v4/websocket");
-        connect(url, |out| MattermostWS {
-            out: out,
-            send: sender.clone(),
-            token: self.cfg.token.clone(),
-            seq: 0,
-        })
-        .unwrap()
+
+        let reco_time = std::time::Duration::from_secs(5);
+        let mut retry = true;
+
+        while retry {
+            if let Err(e) = connect(url.clone(), |out| MattermostWS {
+                out: out,
+                send: sender.clone(),
+                token: self.cfg.token.clone(),
+                seq: 0,
+            }) {
+                match e.kind {
+                    ws::ErrorKind::Io(details) => {
+                        println!(
+                            "websocket disconnected, will attempt to reconnect in {} seconds. error detail: {:?}",
+                            reco_time.as_secs(),
+                            details
+                        );
+                    }
+                    e => {
+                        println!("websocket disconnected with unrecoverable error: {:?}", e);
+                        retry = false;
+                    }
+                }
+            }
+
+            if retry {
+                println!("websocket returned, retrying in {} seconds", reco_time.as_secs());
+                std::thread::sleep(reco_time);
+            }
+        }
     }
 }

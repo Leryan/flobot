@@ -140,7 +140,7 @@ fn main() -> std::result::Result<(), Box<dyn std::error::Error>> {
 
     println!("stopping task runner");
     taskrunner.stop();
-    println!("waiting for listener to stop");
+    println!("waiting for threads to stop");
     wg.wait();
     drop(botdb);
 
