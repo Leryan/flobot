@@ -43,12 +43,12 @@ pub struct Trigger<C, E> {
     match_del: Regex,
     match_text: Regex,
     match_reaction: Regex,
-    tempo: Tempo<String>,
+    tempo: Tempo,
     delay_repeat: Duration,
 }
 
 impl<C, E> Trigger<C, E> {
-    pub fn new(db: Rc<E>, client: Rc<C>, tempo: Tempo<String>, delay_repeat: Duration) -> Self {
+    pub fn new(db: Rc<E>, client: Rc<C>, tempo: Tempo, delay_repeat: Duration) -> Self {
         Self {
             db,
             client,

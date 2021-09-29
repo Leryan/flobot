@@ -44,10 +44,22 @@ where
 {
     fn random(&self, team_id: &str) -> Result {
         let l = self.remotes.len();
-        self.remotes
-            .get(self.rng.borrow_mut().gen_range(0..l)) // [0, l) [incl, excl)
-            .unwrap()
-            .random(team_id)
+        let mut remote_n = self.rng.borrow_mut().gen_range(0..l);
+        for _i in 0..l {
+            let res = self
+                .remotes
+                .get(remote_n) // [0, l) [incl, excl)
+                .unwrap()
+                .random(team_id);
+
+            if res.is_ok() {
+                return res;
+            }
+
+            remote_n = (remote_n + 1) % self.remotes.len();
+        }
+
+        Err(Error::NoData("no joke found :/".to_string()))
     }
 }
 
@@ -79,6 +91,9 @@ where
 {
     fn random(&self, team_id: &str) -> Result {
         let l = self.db.count(team_id)?;
+        if l < 1 {
+            return Err(Error::NoData("no joke in db".to_string()));
+        }
         let blague = self.db.pick(team_id, self.rng.borrow_mut().gen_range(0..l))?;
         match blague {
             Some(b) => Ok(b.text),
@@ -156,6 +171,17 @@ impl Blague for BlaguesAPI {
     fn random(&self, _team_id: &str) -> Result {
         let joke: BlaguesAPIResponse = self.client.get("https://www.blagues-api.fr/api/random").send()?.json()?;
         return Ok(format!("{}\n…\n…\n{}", joke.joke, joke.answer));
+    }
+}
+
+pub struct URLs {
+    pub urls: Vec<String>,
+}
+
+impl Blague for URLs {
+    fn random(&self, _team_id: &str) -> Result {
+        let rnd = rand::random::<usize>() % self.urls.len();
+        Ok(self.urls[rnd].clone())
     }
 }
 

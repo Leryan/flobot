@@ -15,6 +15,7 @@ use flobot::mattermost::client::Mattermost;
 use flobot::middleware;
 use flobot::task::*;
 use std::env;
+use std::fs;
 use std::rc::Rc;
 use std::sync::Arc;
 use std::thread;
@@ -79,6 +80,18 @@ fn main() -> std::result::Result<(), Box<dyn std::error::Error>> {
     if let Ok(token) = env::var("BOT_BLAGUESAPI_TOKEN") {
         let blaguesapi = rdb_blague::BlaguesAPI::new(token.as_str());
         blague_providers.push(Box::new(blaguesapi));
+    }
+    if let Ok(filepath) = env::var("BOT_BLAGUES_URLS") {
+        if let Ok(content) = fs::read_to_string(filepath.clone()) {
+            let mut urls = vec![];
+            for line in content.split("\n") {
+                urls.push(line.to_string());
+            }
+
+            blague_providers.push(Box::new(rdb_blague::URLs { urls }));
+        } else {
+            println!("cannot read jokes from {}", filepath);
+        }
     }
     let rnd_blague = rdb_blague::Select::new(rand::thread_rng(), blague_providers);
     let blague = handlers::blague::Blague::new(Rc::clone(&botdb), rnd_blague, Rc::clone(&mm_client));

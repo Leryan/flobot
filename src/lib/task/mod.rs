@@ -43,7 +43,7 @@ type RunnableTask = Box<dyn Task + Send + Sync>;
 
 pub struct SequentialTaskRunner {
     tasks: Vec<RunnableTask>,
-    tempo: Tempo<String>, // contain task names
+    tempo: Tempo, // contain task names
     cont: Mutex<bool>,
 }
 /// TaskRunner will optimistically run tasks, sequentially. No threading used.
