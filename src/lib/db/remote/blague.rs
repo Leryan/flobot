@@ -113,7 +113,13 @@ impl BadJokes {
         hm.insert(rh::REFERER, rhv::from_str("https://random-ize.com/bad-jokes/").unwrap());
         hm.insert(rh::ACCEPT, rhv::from_str("text/html, */*; q=0.01").unwrap());
         hm.insert(rh::ACCEPT_LANGUAGE, rhv::from_str("en-US,en;q=0.5").unwrap());
-        hm.insert("x-requested-with", rhv::from_str("XMLHttpRequest").unwrap());
+        hm.insert(rh::TE, rhv::from_str("trailers").unwrap());
+        hm.insert(rh::CACHE_CONTROL, rhv::from_str("no-cache").unwrap());
+        hm.insert(rh::PRAGMA, rhv::from_str("no-cache").unwrap());
+        hm.insert("Sec-Fetch-Site", rhv::from_str("same-origin").unwrap());
+        hm.insert("Sec-Fetch-Mode", rhv::from_str("cors").unwrap());
+        hm.insert("Sec-Fetch-Dest", rhv::from_str("empty").unwrap());
+        hm.insert("X-Requested-With", rhv::from_str("XMLHttpRequest").unwrap());
         let c = RClient::builder()
             .user_agent("Mozilla/5.0 (X11; Linux x86_64; rv:92.0) Gecko/20100101 Firefox/92.0")
             .default_headers(hm)
