@@ -1,9 +1,4 @@
-use crate::models::GenericPost;
-use crate::models::GenericPostEdited;
-use crate::models::GenericStatus;
-use crate::models::StatusCode;
-use crate::models::StatusError as GenericStatusError;
-use crate::models::{GenericEvent, GenericHello, GenericUser};
+use crate::models as gm;
 use serde::{Deserialize, Serialize};
 use std::convert::Into;
 
@@ -125,11 +120,11 @@ pub struct StatusDetails {
     pub is_oauth: Option<bool>,
 }
 
-impl Into<GenericPostEdited> for PostEdited {
-    fn into(self) -> GenericPostEdited {
+impl Into<gm::PostEdited> for PostEdited {
+    fn into(self) -> gm::PostEdited {
         // FIXME: must still decode self.post
         let post: Post = serde_json::from_str(&self.post).unwrap();
-        GenericPostEdited {
+        gm::PostEdited {
             user_id: post.user_id.clone(),
             message: post.message.clone(),
             id: post.id.clone(),
@@ -140,9 +135,9 @@ impl Into<GenericPostEdited> for PostEdited {
     }
 }
 
-impl Into<GenericUser> for User {
-    fn into(self) -> GenericUser {
-        GenericUser {
+impl Into<gm::User> for User {
+    fn into(self) -> gm::User {
+        gm::User {
             id: self.id,
             display_name: self.username.clone(),
             username: self.username.clone(),
@@ -150,11 +145,11 @@ impl Into<GenericUser> for User {
     }
 }
 
-impl Into<GenericPost> for Posted {
-    fn into(self) -> GenericPost {
+impl Into<gm::Post> for Posted {
+    fn into(self) -> gm::Post {
         // FIXME: must still decode self.post
         let post: Post = serde_json::from_str(&self.post).unwrap();
-        GenericPost {
+        gm::Post {
             user_id: post.user_id.clone(),
             root_id: post.root_id.clone(),
             parent_id: post.parent_id.clone(),
@@ -166,9 +161,9 @@ impl Into<GenericPost> for Posted {
     }
 }
 
-impl Into<GenericStatusError> for StatusDetails {
-    fn into(self) -> GenericStatusError {
-        GenericStatusError {
+impl Into<gm::StatusError> for StatusDetails {
+    fn into(self) -> gm::StatusError {
+        gm::StatusError {
             message: self.message,
             detailed_error: self.detailed_error,
             request_id: self.request_id,
@@ -177,24 +172,24 @@ impl Into<GenericStatusError> for StatusDetails {
     }
 }
 
-impl Into<GenericStatus> for Status {
-    fn into(self) -> GenericStatus {
+impl Into<gm::Status> for Status {
+    fn into(self) -> gm::Status {
         if self.status.contains("OK") {
-            return GenericStatus {
-                code: StatusCode::OK,
+            return gm::Status {
+                code: gm::StatusCode::OK,
                 error: None,
             };
         }
 
         if self.status.contains("FAIL") {
-            return GenericStatus {
-                code: StatusCode::Error,
+            return gm::Status {
+                code: gm::StatusCode::Error,
                 error: Some(self.error.unwrap().into()),
             };
         }
 
-        GenericStatus {
-            code: StatusCode::Unsupported,
+        gm::Status {
+            code: gm::StatusCode::Unsupported,
             error: None,
         }
     }
@@ -243,30 +238,30 @@ pub enum MetaEvent {
     Unsupported(String),
 }
 
-impl Into<GenericEvent> for Event {
-    fn into(self) -> GenericEvent {
+impl Into<gm::Event> for Event {
+    fn into(self) -> gm::Event {
         match self.data {
-            EventData::Posted(posted) => GenericEvent::Post(posted.into()),
-            EventData::Hello(hello) => GenericEvent::Hello(GenericHello {
+            EventData::Posted(posted) => gm::Event::Post(posted.into()),
+            EventData::Hello(hello) => gm::Event::Hello(gm::Hello {
                 server_string: hello.server_version.clone(),
             }),
-            EventData::PostEdited(edited) => GenericEvent::PostEdited(edited.into()),
+            EventData::PostEdited(edited) => gm::Event::PostEdited(edited.into()),
         }
     }
 }
 
-impl Into<GenericEvent> for Status {
-    fn into(self) -> GenericEvent {
-        GenericEvent::Status(self.into())
+impl Into<gm::Event> for Status {
+    fn into(self) -> gm::Event {
+        gm::Event::Status(self.into())
     }
 }
 
-impl Into<GenericEvent> for MetaEvent {
-    fn into(self) -> GenericEvent {
+impl Into<gm::Event> for MetaEvent {
+    fn into(self) -> gm::Event {
         match self {
             MetaEvent::Event(event) => event.into(),
             MetaEvent::Status(status) => status.into(),
-            MetaEvent::Unsupported(unsupported) => GenericEvent::Unsupported(unsupported),
+            MetaEvent::Unsupported(unsupported) => gm::Event::Unsupported(unsupported),
         }
     }
 }

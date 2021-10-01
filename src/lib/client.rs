@@ -21,15 +21,15 @@ impl std::fmt::Display for Error {
 pub type Result<T> = std::result::Result<T, Error>;
 
 pub trait EventClient {
-    fn listen(&self, sender: ChannelSender<GenericEvent>);
+    fn listen(&self, sender: ChannelSender<Event>);
 }
 
 pub trait Sender {
-    fn post(&self, post: &GenericPost) -> Result<()>;
-    fn send_trigger_list(&self, triggers: Vec<Trigger>, from: &GenericPost) -> Result<()>; // FIXME: generic pagination instead
-    fn reaction(&self, post: &GenericPost, reaction: &str) -> Result<()>;
-    fn reply(&self, post: &GenericPost, message: &str) -> Result<()>;
-    fn message(&self, from: &GenericPost, message: &str) -> Result<()>;
+    fn post(&self, post: &Post) -> Result<()>;
+    fn send_trigger_list(&self, triggers: Vec<Trigger>, from: &Post) -> Result<()>; // FIXME: generic pagination instead
+    fn reaction(&self, post: &Post, reaction: &str) -> Result<()>;
+    fn reply(&self, post: &Post, message: &str) -> Result<()>;
+    fn message(&self, from: &Post, message: &str) -> Result<()>;
     fn edit(&self, post_id: &str, message: &str) -> Result<()>;
 }
 
@@ -41,7 +41,7 @@ pub trait Channel {
 
 pub trait Getter {
     fn my_user_id(&self) -> &str;
-    fn users_by_ids(&self, ids: Vec<&str>) -> Result<Vec<GenericUser>>;
+    fn users_by_ids(&self, ids: Vec<&str>) -> Result<Vec<User>>;
 }
 
 pub trait Notifier {

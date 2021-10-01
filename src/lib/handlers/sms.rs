@@ -1,7 +1,7 @@
 use crate::client;
 use crate::db;
 use crate::handlers::{Error, Handler, Result};
-use crate::models::GenericPost;
+use crate::models::Post;
 use regex::Regex;
 use reqwest;
 use serde_json::json;
@@ -104,7 +104,7 @@ impl<S: SMSSender, D: db::SMS, C: client::Sender> SMS<S, D, C> {
 }
 
 impl<S: SMSSender, D: db::SMS, C: client::Sender> Handler for SMS<S, D, C> {
-    type Data = GenericPost;
+    type Data = Post;
 
     fn name(&self) -> &str {
         "sms"
@@ -156,7 +156,7 @@ Exemple :
 ".to_string())
     }
 
-    fn handle(&self, post: &GenericPost) -> Result {
+    fn handle(&self, post: &Post) -> Result {
         let msg = post.message.as_str();
         let tid = post.team_id.as_str();
 

@@ -1,7 +1,7 @@
 use super::models::*;
 use crate::client::{Channel, Error, Getter, Notifier, Result, Sender};
 use crate::conf::Conf;
-use crate::models::*;
+use crate::models as gm;
 use uuid::Uuid;
 
 impl From<reqwest::Error> for Error {
@@ -91,7 +91,7 @@ impl Channel for Mattermost {
 }
 
 impl Sender for Mattermost {
-    fn post(&self, post: &GenericPost) -> Result<()> {
+    fn post(&self, post: &gm::Post) -> Result<()> {
         let mmpost = NewPost {
             channel_id: post.channel_id.clone(),
             create_at: 0,
@@ -112,13 +112,11 @@ impl Sender for Mattermost {
         Ok(())
     }
 
-    fn message(&self, post: &GenericPost, message: &str) -> Result<()> {
-        let mut post = post.clone();
-        post.message = message.to_string();
-        self.post(&post)
+    fn message(&self, post: &gm::Post, message: &str) -> Result<()> {
+        self.post(&post.nmessage(message))
     }
 
-    fn reaction(&self, post: &GenericPost, reaction: &str) -> Result<()> {
+    fn reaction(&self, post: &gm::Post, reaction: &str) -> Result<()> {
         let reaction = Reaction {
             user_id: self.me.id.clone(),
             post_id: post.id.clone(),
@@ -132,7 +130,7 @@ impl Sender for Mattermost {
         Ok(())
     }
 
-    fn reply(&self, post: &GenericPost, message: &str) -> Result<()> {
+    fn reply(&self, post: &gm::Post, message: &str) -> Result<()> {
         let mmpost = NewPost {
             channel_id: post.channel_id.clone(),
             create_at: 0,
@@ -167,7 +165,7 @@ impl Sender for Mattermost {
         Ok(())
     }
 
-    fn send_trigger_list(&self, triggers: Vec<Trigger>, from: &GenericPost) -> Result<()> {
+    fn send_trigger_list(&self, triggers: Vec<gm::Trigger>, from: &gm::Post) -> Result<()> {
         let mut l = String::from(format!("Ya {:?} triggers.\n", triggers.len()));
         let mut count = 0;
 
@@ -197,25 +195,23 @@ impl Sender for Mattermost {
 impl Notifier for Mattermost {
     fn startup(&self, message: &str) -> Result<()> {
         let datetime = chrono::offset::Local::now();
-        let mut post = GenericPost::with_message(&format!(
+        let post = gm::Post::with_message(&format!(
             "# Startup {:?} (local time)\n## Build Hash\n * `{}`\n{}",
             datetime,
             crate::BUILD_GIT_HASH,
             message
-        ));
-        post.channel_id = self.cfg.debug_channel.clone();
+        ))
+        .nchannel(&self.cfg.debug_channel);
         self.post(&post)
     }
 
     fn required_action(&self, message: &str) -> Result<()> {
-        let mut post = GenericPost::with_message(message);
-        post.channel_id = self.cfg.debug_channel.clone();
+        let post = gm::Post::with_message(message).nchannel(&self.cfg.debug_channel);
         self.post(&post)
     }
 
     fn debug(&self, message: &str) -> Result<()> {
-        let mut post = GenericPost::with_message(message);
-        post.channel_id = self.cfg.debug_channel.clone();
+        let post = gm::Post::with_message(message).nchannel(&self.cfg.debug_channel);
         self.post(&post)
     }
 
@@ -229,7 +225,7 @@ impl Getter for Mattermost {
         &self.me.id
     }
 
-    fn users_by_ids(&self, ids: Vec<&str>) -> Result<Vec<GenericUser>> {
+    fn users_by_ids(&self, ids: Vec<&str>) -> Result<Vec<gm::User>> {
         let r = self
             .client
             .post(self.url("/users/ids"))
@@ -239,7 +235,7 @@ impl Getter for Mattermost {
 
         let users: Vec<User> = r.json()?;
 
-        let mut fusers: Vec<GenericUser> = vec![];
+        let mut fusers: Vec<gm::User> = vec![];
         for u in users.iter() {
             fusers.push((*u).clone().into());
         }

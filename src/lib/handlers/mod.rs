@@ -1,6 +1,6 @@
 use crate::client;
 use crate::db;
-use crate::models::GenericPost;
+use crate::models::Post;
 use std::convert::From;
 
 #[derive(Debug)]
@@ -67,7 +67,7 @@ impl Debug {
 }
 
 impl Handler for Debug {
-    type Data = GenericPost;
+    type Data = Post;
 
     fn name(&self) -> &str {
         "debug"
@@ -76,7 +76,7 @@ impl Handler for Debug {
         None
     }
 
-    fn handle(&self, post: &GenericPost) -> Result {
+    fn handle(&self, post: &Post) -> Result {
         println!("handler {:?} -> {:?}", self.name, post);
         Ok(())
     }

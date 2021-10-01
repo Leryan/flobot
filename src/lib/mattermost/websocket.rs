@@ -9,7 +9,7 @@ use ws::{connect, CloseCode, Handler, Handshake, Message};
 
 struct MattermostWS {
     out: WSSender,
-    send: ChannelSender<GenericEvent>,
+    send: ChannelSender<Event>,
     token: String,
     seq: u64,
 }
@@ -46,7 +46,7 @@ impl Handler for MattermostWS {
 }
 
 impl EventClient for super::client::Mattermost {
-    fn listen(&self, sender: ChannelSender<GenericEvent>) {
+    fn listen(&self, sender: ChannelSender<Event>) {
         let mut url = self.cfg.ws_url.clone();
         url.push_str("/api/v4/websocket");
 

@@ -1,7 +1,7 @@
 use crate::client;
 use crate::handlers;
 use crate::handlers::{Handler as BotHandler, Result};
-use crate::models::GenericPost;
+use crate::models::Post;
 use crate::werewolf;
 use regex::Regex;
 use std::cell::RefCell;
@@ -51,16 +51,14 @@ impl<C> Handler<C>
 where
     C: client::Sender + client::Channel + client::Getter,
 {
-    fn post_all(&self, post: &GenericPost) -> handlers::Result {
-        let mut post = post.clone();
-        post.channel_id = self.room_all.borrow().clone();
+    fn post_all(&self, post: &Post) -> handlers::Result {
+        let post = post.nchannel(&self.room_all.borrow());
         self.client.post(&post)?;
         Ok(())
     }
 
-    fn post_ww(&self, post: &GenericPost) -> handlers::Result {
-        let mut post = post.clone();
-        post.channel_id = self.room_ww.borrow().clone();
+    fn post_ww(&self, post: &Post) -> handlers::Result {
+        let post = post.nchannel(&self.room_ww.borrow());
         self.client.post(&post)?;
         Ok(())
     }
@@ -74,7 +72,7 @@ where
         *self.game.borrow_mut() = werewolf::Game::new();
     }
 
-    fn handle_starting_commands(&self, post: &GenericPost, cur: &werewolf::Step) -> handlers::Result {
+    fn handle_starting_commands(&self, post: &Post, cur: &werewolf::Step) -> handlers::Result {
         // answer to start, join and list commands
         if self.re_match(r"!ww[\s]+start.*", post.message.as_str()) {
             match cur {
@@ -91,7 +89,7 @@ where
                         {
                             self.client.reaction(&post, "ok_hand")?;
                             self.client
-                                .post(&post.new_message("Une partie de loup-garou va démarrer ! Pour joindre la partie : `!ww join`"))?;
+                                .post(&post.nmessage("Une partie de loup-garou va démarrer ! Pour joindre la partie : `!ww join`"))?;
                         }
                     }
                 }
@@ -119,8 +117,8 @@ where
                                 let rid_ww = self.client.create_private(self.team_id.borrow().as_str(), "WW-LOUPS", &ww)?;
                                 *self.room_all.borrow_mut() = rid_all;
                                 *self.room_ww.borrow_mut() = rid_ww;
-                                self.post_all(&post.new_message("### La partie commence !"))?;
-                                self.post_all(&post.new_message(HELP))?;
+                                self.post_all(&post.nmessage("### La partie commence !"))?;
+                                self.post_all(&post.nmessage(HELP))?;
                             }
                         }
                     }
@@ -135,7 +133,7 @@ where
                     if res.is_ok() {
                         self.client.reaction(&post, "ok_hand")?;
                         if res.unwrap() {
-                            self.client.post(&post.new_message("La partie peut démarrer. Il est toujours possible de joindre la partie. Quand vous êtes prêts, démarrez avec `!ww start`"))?;
+                            self.client.post(&post.nmessage("La partie peut démarrer. Il est toujours possible de joindre la partie. Quand vous êtes prêts, démarrez avec `!ww start`"))?;
                         }
                     }
                 }
@@ -157,7 +155,7 @@ where
         Ok(())
     }
 
-    fn handle_game(&self, post: &GenericPost) -> handlers::Result {
+    fn handle_game(&self, post: &Post) -> handlers::Result {
         let cur = self.game.borrow().current_step();
         self.handle_starting_commands(post, &cur)?;
 
@@ -177,9 +175,9 @@ where
                             .map(|p| format!(" * `{}`", p.name))
                             .collect::<Vec<String>>()
                             .join("\n");
-                        self.post_all(&post.new_message("### Le soleil se couche, les villageois aussi…"))?;
+                        self.post_all(&post.nmessage("### Le soleil se couche, les villageois aussi…"))?;
                         let msg = format!("### Vous avez FAIM !\nChoisissez avec `!ww vote <name>` :\n{}", names);
-                        self.post_ww(&post.new_message(msg.as_str()))?;
+                        self.post_ww(&post.nmessage(msg.as_str()))?;
                         break;
                     }
                 }
@@ -192,7 +190,7 @@ where
                             .process(werewolf::Action::WWKill((post.user_id.clone(), name.clone())));
                         if let Ok(werewolf::ActionAnswer::WWKill) = res {
                             let msg = format!("{} était bien bon…", name);
-                            self.post_ww(&post.new_message(msg.as_str()))?;
+                            self.post_ww(&post.nmessage(msg.as_str()))?;
                         } else {
                             self.client.reply(&post, "pas possible")?;
                             break;
@@ -208,7 +206,7 @@ where
                             .collect::<Vec<String>>()
                             .join("\n");
                         let msg = format!("### Quelqu'un est mort…\n{}", names);
-                        self.post_all(&post.new_message(msg.as_str()))?;
+                        self.post_all(&post.nmessage(msg.as_str()))?;
                     }
                 }
                 werewolf::Step::VillageVoteKill => {
@@ -220,7 +218,7 @@ where
                             .collect::<Vec<String>>()
                             .join("\n");
                         let msg = format!("### Votez qui selon vous est un loup garou !\n{}", names);
-                        self.post_all(&post.new_message(msg.as_str()))?;
+                        self.post_all(&post.nmessage(msg.as_str()))?;
                         break;
                     }
                 }
@@ -233,7 +231,7 @@ where
                             .process(werewolf::Action::VillageKill((post.user_id.clone(), name.clone())));
                         if let Ok(werewolf::ActionAnswer::VillageKill(player)) = res {
                             let msg = format!("`{}` était {:?} !", name, player.role);
-                            self.post_all(&post.new_message(msg.as_str()))?;
+                            self.post_all(&post.nmessage(msg.as_str()))?;
                         } else {
                             self.client.reply(&post, "pas possible")?;
                             break;
@@ -253,7 +251,7 @@ where
 
                     let _ = self.client.archive_channel(self.room_ww.borrow().as_str());
 
-                    self.post_all(&post.new_message(msg.as_str()))?;
+                    self.post_all(&post.nmessage(msg.as_str()))?;
                     break;
                 }
             };
@@ -267,7 +265,7 @@ impl<C> BotHandler for Handler<C>
 where
     C: client::Sender + client::Channel + client::Getter,
 {
-    type Data = GenericPost;
+    type Data = Post;
 
     fn name(&self) -> &str {
         "werewolf"
@@ -285,7 +283,7 @@ where
         )
     }
 
-    fn handle(&self, post: &GenericPost) -> Result {
+    fn handle(&self, post: &Post) -> Result {
         let message = post.message.as_str();
 
         if !message.starts_with("!ww ") {

@@ -1,5 +1,5 @@
 use crate::db::tempo::Tempo;
-use crate::models::GenericPost;
+use crate::models::Post;
 use chrono::{self, DateTime, Duration as CDuration, Local, Timelike};
 use reqwest::blocking::Client;
 use std::convert::From;
@@ -174,8 +174,7 @@ impl<S: crate::client::Sender> Task for Meteo<S> {
             msg.push_str(&format!(" * {}\n", &v.text().unwrap()));
         }
 
-        let mut post = GenericPost::with_message(&msg);
-        post.channel_id = self.on_channel_id.to_string();
+        let post = Post::with_message(&msg).nchannel(&self.on_channel_id);
         if self.client.post(&post).is_err() {
             return Err(Error::ExpRetry("cannot post".into()));
         }

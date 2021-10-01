@@ -3,7 +3,7 @@ use crate::handlers::Handler;
 use crate::middleware::Continue;
 use crate::middleware::Error as MiddlewareError;
 use crate::middleware::Middleware;
-use crate::models::{GenericEvent, GenericPost, StatusCode, StatusError};
+use crate::models::{Event, Post, StatusCode, StatusError};
 use crossbeam::crossbeam_channel::{Receiver, RecvTimeoutError};
 use std::convert::From;
 use std::time::Duration;
@@ -43,7 +43,7 @@ impl From<MiddlewareError> for Error {
     }
 }
 
-pub type PostHandler = Box<dyn Handler<Data = GenericPost>>;
+pub type PostHandler = Box<dyn Handler<Data = Post>>;
 
 pub struct Instance<C> {
     middlewares: Vec<Box<dyn Middleware>>,
@@ -75,7 +75,7 @@ impl<C: client::Sender + client::Notifier> Instance<C> {
         self
     }
 
-    fn process_middlewares(&mut self, event: GenericEvent) -> Result<Option<GenericEvent>, Error> {
+    fn process_middlewares(&mut self, event: Event) -> Result<Option<Event>, Error> {
         let mut event = event;
         for middleware in self.middlewares.iter_mut() {
             match middleware.process(event)? {
@@ -91,7 +91,7 @@ impl<C: client::Sender + client::Notifier> Instance<C> {
         Ok(Some(event))
     }
 
-    fn process_help(&self, post: &GenericPost) -> Result<(), Error> {
+    fn process_help(&self, post: &Post) -> Result<(), Error> {
         if &post.message == "!help" {
             let mut reply = String::new();
             let mut keys: Vec<String> = self.helps.keys().map(|v| v.clone()).collect();
@@ -116,7 +116,7 @@ impl<C: client::Sender + client::Notifier> Instance<C> {
         }
     }
 
-    fn process_event_post(&mut self, post: GenericPost) -> Result<(), Error> {
+    fn process_event_post(&mut self, post: Post) -> Result<(), Error> {
         let _ = self.process_help(&post)?;
         for handler in self.post_handlers.iter_mut() {
             let res = handler.handle(&post);
@@ -131,22 +131,22 @@ impl<C: client::Sender + client::Notifier> Instance<C> {
         Ok(())
     }
 
-    fn process_event(&mut self, event: GenericEvent) -> Result<(), Error> {
+    fn process_event(&mut self, event: Event) -> Result<(), Error> {
         match event {
-            GenericEvent::Post(post) => self.process_event_post(post),
-            GenericEvent::PostEdited(_edited) => {
+            Event::Post(post) => self.process_event_post(post),
+            Event::PostEdited(_edited) => {
                 println!("edits are unsupported for now");
                 Ok(())
             }
-            GenericEvent::Unsupported(_unsupported) => {
+            Event::Unsupported(_unsupported) => {
                 //println!("unsupported event: {:?}", unsupported);
                 Ok(())
             }
-            GenericEvent::Hello(hello) => {
+            Event::Hello(hello) => {
                 println!("hello server {:?}", hello.server_string);
                 Ok(())
             }
-            GenericEvent::Status(status) => match status.code {
+            Event::Status(status) => match status.code {
                 StatusCode::OK => Ok(()),
                 StatusCode::Error => Err(Error::Status(status.error.unwrap_or(StatusError::new_none()).message)),
                 StatusCode::Unsupported => {
@@ -158,7 +158,7 @@ impl<C: client::Sender + client::Notifier> Instance<C> {
         }
     }
 
-    fn process(&mut self, event: GenericEvent) -> Result<(), Error> {
+    fn process(&mut self, event: Event) -> Result<(), Error> {
         let res = self.process_middlewares(event)?;
         match res {
             Some(event) => self.process_event(event),
@@ -166,7 +166,7 @@ impl<C: client::Sender + client::Notifier> Instance<C> {
         }
     }
 
-    pub fn run(&mut self, receiver: Receiver<GenericEvent>) -> Result<(), Error> {
+    pub fn run(&mut self, receiver: Receiver<Event>) -> Result<(), Error> {
         let mut loaded = String::from("## Loaded middlewares\n");
         for m in self.middlewares.iter() {
             loaded.push_str(&format!(" * `{}`\n", m.name()));

@@ -2,7 +2,7 @@ use crate::client;
 use crate::db;
 use crate::db::tempo::Tempo;
 use crate::handlers::{Handler, Result};
-use crate::models::GenericPost;
+use crate::models::Post;
 use crate::models::Trigger as MTrigger;
 use regex::escape as escape_re;
 use regex::Regex;
@@ -71,7 +71,7 @@ where
     C: client::Sender,
     E: db::Trigger,
 {
-    type Data = GenericPost;
+    type Data = Post;
 
     fn name(&self) -> &str {
         "trigger"
@@ -95,7 +95,7 @@ A per [channel, trigger] antispam is effective and currently configured at {} se
         ))
     }
 
-    fn handle(&self, post: &GenericPost) -> Result {
+    fn handle(&self, post: &Post) -> Result {
         let message = post.message.as_str();
 
         if !message.starts_with("!trigger ") {

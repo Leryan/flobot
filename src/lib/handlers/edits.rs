@@ -1,7 +1,7 @@
 use crate::client;
 use crate::db;
 use crate::handlers::{Handler, Result};
-use crate::models::GenericPost;
+use crate::models::Post;
 use std::rc::Rc;
 
 use regex::Regex;
@@ -31,7 +31,7 @@ where
         }
     }
 
-    fn handle_edit(&self, post: &GenericPost, captured: &str) -> Result {
+    fn handle_edit(&self, post: &Post, captured: &str) -> Result {
         let res = self.db.find(&post.user_id, &post.team_id, captured)?;
 
         match res {
@@ -48,12 +48,12 @@ where
         Ok(())
     }
 
-    fn handle_del_team(&self, post: &GenericPost, captured: &str) -> Result {
+    fn handle_del_team(&self, post: &Post, captured: &str) -> Result {
         let _ = self.db.del_team(&post.team_id, captured)?;
         Ok(self.client.reaction(post, "ok_hand")?)
     }
 
-    fn handle_add(&self, post: &GenericPost, word: &str, replace: &str) -> Result {
+    fn handle_add(&self, post: &Post, word: &str, replace: &str) -> Result {
         if word == replace {
             return Ok(self.client.reply(post, "aha, aha… il est boubourse :3")?);
         }
@@ -66,7 +66,7 @@ where
         Ok(self.client.reaction(post, "ok_hand")?)
     }
 
-    fn handle_list(&self, post: &GenericPost) -> Result {
+    fn handle_list(&self, post: &Post) -> Result {
         let res = self.db.list(&post.team_id)?;
 
         if res.len() == 0 {
@@ -85,7 +85,7 @@ where
         Ok(self.client.reply(post, &out)?)
     }
 
-    fn handle_post(&self, post: &GenericPost) -> Result {
+    fn handle_post(&self, post: &Post) -> Result {
         let message = post.message.clone();
 
         match self.match_edit.captures(&message) {
@@ -123,7 +123,7 @@ where
     C: client::Sender,
     E: db::Edits,
 {
-    type Data = GenericPost;
+    type Data = Post;
 
     fn name(&self) -> &str {
         "edits"
@@ -140,7 +140,7 @@ where
         )
     }
 
-    fn handle(&self, post: &GenericPost) -> Result {
+    fn handle(&self, post: &Post) -> Result {
         self.handle_post(post)
     }
 }

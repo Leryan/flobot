@@ -1,7 +1,7 @@
 use crate::client;
 use crate::db::Joke as DB;
 use crate::handlers::Handler as BotHandler;
-use crate::models::GenericPost;
+use crate::models::Post;
 use regex::Regex;
 use reqwest::blocking::Client as RClient;
 use reqwest::header as rh;
@@ -254,7 +254,7 @@ where
     S: DB,
     R: Random,
 {
-    type Data = GenericPost;
+    type Data = Post;
 
     fn name(&self) -> &str {
         "blague"
@@ -271,7 +271,7 @@ where
         )
     }
 
-    fn handle(&self, post: &GenericPost) -> crate::handlers::Result {
+    fn handle(&self, post: &Post) -> crate::handlers::Result {
         let msg = post.message.as_str();
 
         if msg == "!blague" {

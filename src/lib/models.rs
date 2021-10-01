@@ -1,19 +1,19 @@
 #[derive(Clone, Debug)]
-pub enum GenericEvent {
-    Hello(GenericHello),
-    Post(GenericPost),
-    Status(GenericStatus),
+pub enum Event {
+    Hello(Hello),
+    Post(Post),
+    Status(Status),
     Unsupported(String),
-    PostEdited(GenericPostEdited),
+    PostEdited(PostEdited),
 }
 
 #[derive(Clone, Debug)]
-pub struct GenericHello {
+pub struct Hello {
     pub server_string: String,
 }
 
 #[derive(Clone, Debug)]
-pub struct GenericPost {
+pub struct Post {
     pub channel_id: String,
     pub message: String,
     pub user_id: String,
@@ -24,7 +24,7 @@ pub struct GenericPost {
 }
 
 #[derive(Clone, Debug)]
-pub struct GenericPostEdited {
+pub struct PostEdited {
     pub channel_id: String,
     pub message: String,
     pub user_id: String,
@@ -33,7 +33,7 @@ pub struct GenericPostEdited {
     pub id: String,
 }
 
-impl GenericPost {
+impl Post {
     pub fn new() -> Self {
         Self {
             channel_id: "".to_string(),
@@ -52,9 +52,15 @@ impl GenericPost {
         s
     }
 
-    pub fn new_message(&self, message: &str) -> Self {
+    pub fn nmessage(&self, message: &str) -> Self {
         let mut s = self.clone();
         s.message = message.to_string();
+        s
+    }
+
+    pub fn nchannel(&self, id: &str) -> Self {
+        let mut s = self.clone();
+        s.channel_id = id.to_string();
         s
     }
 }
@@ -68,7 +74,7 @@ pub enum StatusCode {
 }
 
 #[derive(Clone, Debug)]
-pub struct GenericStatus {
+pub struct Status {
     pub code: StatusCode,
     pub error: Option<StatusError>,
 }
@@ -81,7 +87,7 @@ pub struct StatusError {
     pub status_code: i32,
 }
 
-pub struct GenericUser {
+pub struct User {
     pub id: String,
     pub username: String,
     pub display_name: String,
