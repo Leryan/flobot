@@ -6,11 +6,11 @@ use dotenv;
 use flobot::client::*;
 use flobot::conf::Conf;
 use flobot::db;
-use flobot::joke;
 use flobot::db::sqlite as dbs;
 use flobot::db::tempo::Tempo;
 use flobot::handlers;
 use flobot::instance::Instance;
+use flobot::joke;
 use flobot::mattermost::client::Mattermost;
 use flobot::middleware;
 use flobot::task::*;
@@ -99,7 +99,7 @@ fn main() -> std::result::Result<(), Box<dyn std::error::Error>> {
     }
 
     let rnd_blague = joke::SelectProvider::new(rand::thread_rng(), jokeproviders);
-    let blague = handlers::blague::Blague::new(Rc::clone(&botdb), rnd_blague, mm_client.clone());
+    let blague = joke::JokeHandler::new(Rc::clone(&botdb), rnd_blague, mm_client.clone());
 
     instance.add_post_handler(Box::new(blague));
 

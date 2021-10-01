@@ -4,11 +4,11 @@ use crate::task::{ExecIn, Task};
 use chrono::{DateTime, Duration, Local};
 use reqwest::blocking::Client;
 use serde::Deserialize;
+use std::result::Result as StdResult;
 use std::sync::{Arc, RwLock};
 use std::time::Duration as StdDuration;
 use url::form_urlencoded;
 use uuid::Uuid;
-use std::result::Result as StdResult;
 
 fn dfs(secs: u64) -> Duration {
     Duration::from_std(StdDuration::from_secs(secs)).unwrap()
