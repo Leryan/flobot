@@ -34,7 +34,8 @@ impl Token {
         // keep a margin of 10%
         self.expired_after = Some(Local::now() + dfs(self.expires_in));
         if rt {
-            self.refresh_token_expired_after = Some(Local::now() + dfs(self.refresh_token_expires_in));
+            self.refresh_token_expired_after =
+                Some(Local::now() + dfs(self.refresh_token_expires_in));
         }
     }
 }
@@ -124,7 +125,13 @@ pub struct Pinterest<N> {
 }
 
 impl<N: crate::client::Notifier> Pinterest<N> {
-    pub fn new(client_id: &str, client_secret: &str, redirect: &str, board_id: &str, notifier: N) -> Self {
+    pub fn new(
+        client_id: &str,
+        client_secret: &str,
+        redirect: &str,
+        board_id: &str,
+        notifier: N,
+    ) -> Self {
         Self {
             token: Arc::new(RwLock::new(None)),
             state: Uuid::new_v4().to_string(),
@@ -151,7 +158,9 @@ impl<N: crate::client::Notifier> Pinterest<N> {
     fn authorization(&self) -> String {
         format!(
             "Basic {}",
-            base64::encode(format!("{}:{}", self.client_id, self.client_secret).as_bytes())
+            base64::encode(
+                format!("{}:{}", self.client_id, self.client_secret).as_bytes()
+            )
         )
     }
 
@@ -193,7 +202,11 @@ impl<N: crate::client::Notifier> Pinterest<N> {
 
     pub fn reauthenticate(&self) -> bool {
         // mutex -> guard -> ok guard -> refcell -> borrow -> option<t> -> option<&t> -> unwrap -> field -> clone
-        let rt = (*self.token.read().unwrap()).as_ref().unwrap().refresh_token.clone();
+        let rt = (*self.token.read().unwrap())
+            .as_ref()
+            .unwrap()
+            .refresh_token
+            .clone();
         let mut form = std::collections::HashMap::new();
         form.insert("grant_type", "refresh_token");
         form.insert("refresh_token", &rt);
@@ -231,18 +244,28 @@ impl<N> Random for Pinterest<N> {
         println!("pinterest: !blague called");
         if let Some(token) = &((*self.token.read().unwrap()).as_ref()) {
             let at = token.access_token.clone();
-            let url = format!("https://api.pinterest.com/v5/boards/{}/pins", self.board_id);
+            let url =
+                format!("https://api.pinterest.com/v5/boards/{}/pins", self.board_id);
 
-            let val = Client::new().get(url).bearer_auth(&at).send()?.json::<serde_json::Value>()?;
+            let val = Client::new()
+                .get(url)
+                .bearer_auth(&at)
+                .send()?
+                .json::<serde_json::Value>()?;
 
             println!("bord list: {:?}", val);
 
             if val.get("code").is_none() {
-                let items: &Vec<serde_json::Value> = val.get("items").unwrap().as_array().unwrap();
+                let items: &Vec<serde_json::Value> =
+                    val.get("items").unwrap().as_array().unwrap();
                 let pin_id = items[0].get("id").unwrap().as_str().unwrap();
 
                 let url = format!("https://api.pinterest.com/v5/pins/{}", pin_id);
-                let val = Client::new().get(url).bearer_auth(&at).send()?.json::<serde_json::Value>()?;
+                let val = Client::new()
+                    .get(url)
+                    .bearer_auth(&at)
+                    .send()?
+                    .json::<serde_json::Value>()?;
 
                 println!("pin: {:?}", val);
             }

@@ -62,7 +62,9 @@ pub struct Debug {
 
 impl Debug {
     pub fn new(name: &str) -> Self {
-        Debug { name: String::from(name) }
+        Debug {
+            name: String::from(name),
+        }
     }
 }
 

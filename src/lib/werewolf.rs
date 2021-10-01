@@ -103,7 +103,11 @@ impl Game {
         Ok(self.players.len() >= MIN_PLAYERS)
     }
 
-    pub fn kill_player(&mut self, id: Option<&str>, name: Option<&str>) -> Option<Player> {
+    pub fn kill_player(
+        &mut self,
+        id: Option<&str>,
+        name: Option<&str>,
+    ) -> Option<Player> {
         for p in self.players.iter_mut() {
             if let Some(id) = id {
                 if p.id == id {
@@ -125,7 +129,11 @@ impl Game {
     }
 
     pub fn alive_players(&self) -> Vec<Player> {
-        self.players.iter().filter(|p| p.alive).map(|p| p.clone()).collect()
+        self.players
+            .iter()
+            .filter(|p| p.alive)
+            .map(|p| p.clone())
+            .collect()
     }
 
     pub fn alive_villagers(&self) -> Vec<Player> {
@@ -245,7 +253,9 @@ impl Game {
                     if self
                         .players
                         .iter()
-                        .filter(|p| p.id == player && p.role == Role::Werewolf && p.alive)
+                        .filter(|p| {
+                            p.id == player && p.role == Role::Werewolf && p.alive
+                        })
                         .count()
                         > 0
                     {
@@ -264,8 +274,19 @@ impl Game {
                 Ok(ActionAnswer::WhoVillageKill(self.alive_players()))
             }
             Action::VillageKill((player, name)) => {
-                if let Some(_) = self.players.iter().filter(|p| p.name == name && p.alive).next() {
-                    if self.players.iter().filter(|p| p.id == player && p.alive).count() > 0 {
+                if let Some(_) = self
+                    .players
+                    .iter()
+                    .filter(|p| p.name == name && p.alive)
+                    .next()
+                {
+                    if self
+                        .players
+                        .iter()
+                        .filter(|p| p.id == player && p.alive)
+                        .count()
+                        > 0
+                    {
                         let player = self.kill_player(None, Some(&name)).unwrap();
                         self.deads.push(player.clone());
                         self.step = self.check_endgame_or(Step::WerewolfsVoteKill);
@@ -321,7 +342,10 @@ mod tests {
         let res = game.process(Action::WhoWWKill)?;
         if let ActionAnswer::WhoWWKill(players) = res {
             assert_eq!(players.len(), 2);
-            assert_eq!(players.iter().filter(|p| p.role != Role::Werewolf).count(), players.len());
+            assert_eq!(
+                players.iter().filter(|p| p.role != Role::Werewolf).count(),
+                players.len()
+            );
             let wwid = game.alive_werewolfs()[0].id.clone();
 
             let killp = players[0].clone();
@@ -344,12 +368,20 @@ mod tests {
             assert_eq!(game.step, Step::VillageVoteKill);
             let res = game.process(Action::WhoVillageKill)?;
             if let ActionAnswer::WhoVillageKill(players) = res {
-                assert_eq!(players.iter().filter(|p| p.role == Role::Werewolf).count(), 2);
+                assert_eq!(
+                    players.iter().filter(|p| p.role == Role::Werewolf).count(),
+                    2
+                );
                 assert_eq!(players.len(), 3);
 
-                let villager = players.iter().filter(|p| p.role == Role::Werewolf).next().unwrap();
+                let villager = players
+                    .iter()
+                    .filter(|p| p.role == Role::Werewolf)
+                    .next()
+                    .unwrap();
                 let viid = game.alive_players()[0].id.clone();
-                let res = game.process(Action::VillageKill((viid, villager.name.clone())))?;
+                let res =
+                    game.process(Action::VillageKill((viid, villager.name.clone())))?;
 
                 if let ActionAnswer::VillageKill(villager) = res {
                     assert_eq!(false, villager.alive);
@@ -358,13 +390,17 @@ mod tests {
 
                     let res = game.process(Action::WhoWWKill)?;
                     if let ActionAnswer::WhoWWKill(players) = res {
-                        assert_eq!(players.iter().filter(|p| p.role != Role::Werewolf).count(), 1);
+                        assert_eq!(
+                            players.iter().filter(|p| p.role != Role::Werewolf).count(),
+                            1
+                        );
                         assert_eq!(players.len(), 1);
                         assert_eq!(Step::WerewolfsKill, game.step);
 
                         let villager = players[0].clone();
                         let wwid = game.alive_werewolfs()[0].id.clone();
-                        let res = game.process(Action::WWKill((wwid, villager.name.clone())))?;
+                        let res = game
+                            .process(Action::WWKill((wwid, villager.name.clone())))?;
 
                         assert_eq!(ActionAnswer::WWKill, res);
                         assert_eq!(Step::End, game.step);

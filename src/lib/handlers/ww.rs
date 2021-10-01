@@ -72,31 +72,46 @@ where
         *self.game.borrow_mut() = werewolf::Game::new();
     }
 
-    fn handle_starting_commands(&self, post: &Post, cur: &werewolf::Step) -> handlers::Result {
+    fn handle_starting_commands(
+        &self,
+        post: &Post,
+        cur: &werewolf::Step,
+    ) -> handlers::Result {
         // answer to start, join and list commands
         if self.re_match(r"!ww[\s]+start.*", post.message.as_str()) {
             match cur {
                 werewolf::Step::None => {
                     *self.team_id.borrow_mut() = post.team_id.clone();
                     *self.game_owner.borrow_mut() = Some(post.user_id.clone());
-                    if self.game.borrow_mut().process(werewolf::Action::WaitPlayers).is_ok() {
-                        let users = self.client.users_by_ids(vec![post.user_id.as_str()])?;
+                    if self
+                        .game
+                        .borrow_mut()
+                        .process(werewolf::Action::WaitPlayers)
+                        .is_ok()
+                    {
+                        let users =
+                            self.client.users_by_ids(vec![post.user_id.as_str()])?;
                         if self
                             .game
                             .borrow_mut()
-                            .add_player(users[0].id.as_str(), users[0].username.as_str())
+                            .add_player(
+                                users[0].id.as_str(),
+                                users[0].username.as_str(),
+                            )
                             .is_ok()
                         {
                             self.client.reaction(&post, "ok_hand")?;
-                            self.client
-                                .post(&post.nmessage("Une partie de loup-garou va démarrer ! Pour joindre la partie : `!ww join`"))?;
+                            self.client.post(&post.nmessage(
+                                "Une partie de loup-garou va démarrer ! Pour joindre la partie : `!ww join`",
+                            ))?;
                         }
                     }
                 }
                 werewolf::Step::WaitPlayers => {
                     if let Some(go) = self.game_owner.borrow().clone() {
                         if go == post.user_id.as_str() {
-                            let res = self.game.borrow_mut().process(werewolf::Action::Ready);
+                            let res =
+                                self.game.borrow_mut().process(werewolf::Action::Ready);
                             if let Ok(_) = res {
                                 let all: Vec<String> = self
                                     .game
@@ -113,11 +128,21 @@ where
                                     .filter_map(|p| Some(p.id.clone()))
                                     .collect();
 
-                                let rid_all = self.client.create_private(self.team_id.borrow().as_str(), "WW-VILLAGE", &all)?;
-                                let rid_ww = self.client.create_private(self.team_id.borrow().as_str(), "WW-LOUPS", &ww)?;
+                                let rid_all = self.client.create_private(
+                                    self.team_id.borrow().as_str(),
+                                    "WW-VILLAGE",
+                                    &all,
+                                )?;
+                                let rid_ww = self.client.create_private(
+                                    self.team_id.borrow().as_str(),
+                                    "WW-LOUPS",
+                                    &ww,
+                                )?;
                                 *self.room_all.borrow_mut() = rid_all;
                                 *self.room_ww.borrow_mut() = rid_ww;
-                                self.post_all(&post.nmessage("### La partie commence !"))?;
+                                self.post_all(
+                                    &post.nmessage("### La partie commence !"),
+                                )?;
                                 self.post_all(&post.nmessage(HELP))?;
                             }
                         }
@@ -128,8 +153,12 @@ where
         } else if self.re_match(r"!ww[\s]+join.*", post.message.as_str()) {
             match cur {
                 werewolf::Step::WaitPlayers => {
-                    let users = self.client.users_by_ids(vec![post.user_id.as_str()])?;
-                    let res = self.game.borrow_mut().add_player(users[0].id.as_str(), users[0].username.as_str());
+                    let users =
+                        self.client.users_by_ids(vec![post.user_id.as_str()])?;
+                    let res = self
+                        .game
+                        .borrow_mut()
+                        .add_player(users[0].id.as_str(), users[0].username.as_str());
                     if res.is_ok() {
                         self.client.reaction(&post, "ok_hand")?;
                         if res.unwrap() {
@@ -137,7 +166,9 @@ where
                         }
                     }
                 }
-                _ => self.client.reply(post, "Aucune partie joignable pour le moment.")?,
+                _ => self
+                    .client
+                    .reply(post, "Aucune partie joignable pour le moment.")?,
             };
         } else if self.re_match(r"!ww[\s]+list.*", post.message.as_str()) {
             match cur {
@@ -168,14 +199,17 @@ where
                 werewolf::Step::None | werewolf::Step::Ready => {}
                 werewolf::Step::WaitPlayers => break,
                 werewolf::Step::WerewolfsVoteKill => {
-                    let res = self.game.borrow_mut().process(werewolf::Action::WhoWWKill);
+                    let res =
+                        self.game.borrow_mut().process(werewolf::Action::WhoWWKill);
                     if let Ok(werewolf::ActionAnswer::WhoWWKill(players)) = res {
                         let names = players
                             .iter()
                             .map(|p| format!(" * `{}`", p.name))
                             .collect::<Vec<String>>()
                             .join("\n");
-                        self.post_all(&post.nmessage("### Le soleil se couche, les villageois aussi…"))?;
+                        self.post_all(&post.nmessage(
+                            "### Le soleil se couche, les villageois aussi…",
+                        ))?;
                         let msg = format!("### Vous avez FAIM !\nChoisissez avec `!ww vote <name>` :\n{}", names);
                         self.post_ww(&post.nmessage(msg.as_str()))?;
                         break;
@@ -184,10 +218,11 @@ where
                 werewolf::Step::WerewolfsKill => {
                     if let Some(captures) = re_vote.captures(post.message.as_str()) {
                         let name = captures.get(1).unwrap().as_str().to_string();
-                        let res = self
-                            .game
-                            .borrow_mut()
-                            .process(werewolf::Action::WWKill((post.user_id.clone(), name.clone())));
+                        let res =
+                            self.game.borrow_mut().process(werewolf::Action::WWKill((
+                                post.user_id.clone(),
+                                name.clone(),
+                            )));
                         if let Ok(werewolf::ActionAnswer::WWKill) = res {
                             let msg = format!("{} était bien bon…", name);
                             self.post_ww(&post.nmessage(msg.as_str()))?;
@@ -210,14 +245,20 @@ where
                     }
                 }
                 werewolf::Step::VillageVoteKill => {
-                    let res = self.game.borrow_mut().process(werewolf::Action::WhoVillageKill);
+                    let res = self
+                        .game
+                        .borrow_mut()
+                        .process(werewolf::Action::WhoVillageKill);
                     if let Ok(werewolf::ActionAnswer::WhoVillageKill(players)) = res {
                         let names = players
                             .iter()
                             .map(|p| format!(" * `{}`", p.name))
                             .collect::<Vec<String>>()
                             .join("\n");
-                        let msg = format!("### Votez qui selon vous est un loup garou !\n{}", names);
+                        let msg = format!(
+                            "### Votez qui selon vous est un loup garou !\n{}",
+                            names
+                        );
                         self.post_all(&post.nmessage(msg.as_str()))?;
                         break;
                     }
@@ -225,10 +266,12 @@ where
                 werewolf::Step::VillageKill => {
                     if let Some(captures) = re_vote.captures(post.message.as_str()) {
                         let name = captures.get(1).unwrap().as_str().to_string();
-                        let res = self
-                            .game
-                            .borrow_mut()
-                            .process(werewolf::Action::VillageKill((post.user_id.clone(), name.clone())));
+                        let res = self.game.borrow_mut().process(
+                            werewolf::Action::VillageKill((
+                                post.user_id.clone(),
+                                name.clone(),
+                            )),
+                        );
                         if let Ok(werewolf::ActionAnswer::VillageKill(player)) = res {
                             let msg = format!("`{}` était {:?} !", name, player.role);
                             self.post_all(&post.nmessage(msg.as_str()))?;

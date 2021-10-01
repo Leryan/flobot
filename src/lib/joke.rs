@@ -122,7 +122,9 @@ where
         if l < 1 {
             return Err(Error::NoData("no joke in db".to_string()));
         }
-        let blague = self.db.pick(team_id, self.rng.borrow_mut().gen_range(0..l))?;
+        let blague = self
+            .db
+            .pick(team_id, self.rng.borrow_mut().gen_range(0..l))?;
         match blague {
             Some(b) => Ok(b.text),
             None => Err(Error::NoData("cannot find that joke".to_string())),
@@ -138,9 +140,15 @@ pub struct ProviderBadJokes {
 impl ProviderBadJokes {
     pub fn new() -> Self {
         let mut hm = rhm::new();
-        hm.insert(rh::REFERER, rhv::from_str("https://random-ize.com/bad-jokes/").unwrap());
+        hm.insert(
+            rh::REFERER,
+            rhv::from_str("https://random-ize.com/bad-jokes/").unwrap(),
+        );
         hm.insert(rh::ACCEPT, rhv::from_str("text/html, */*; q=0.01").unwrap());
-        hm.insert(rh::ACCEPT_LANGUAGE, rhv::from_str("en-US,en;q=0.5").unwrap());
+        hm.insert(
+            rh::ACCEPT_LANGUAGE,
+            rhv::from_str("en-US,en;q=0.5").unwrap(),
+        );
         hm.insert(rh::TE, rhv::from_str("trailers").unwrap());
         hm.insert(rh::CACHE_CONTROL, rhv::from_str("no-cache").unwrap());
         hm.insert(rh::PRAGMA, rhv::from_str("no-cache").unwrap());
@@ -149,7 +157,9 @@ impl ProviderBadJokes {
         hm.insert("Sec-Fetch-Dest", rhv::from_str("empty").unwrap());
         hm.insert("X-Requested-With", rhv::from_str("XMLHttpRequest").unwrap());
         let c = RClient::builder()
-            .user_agent("Mozilla/5.0 (X11; Linux x86_64; rv:92.0) Gecko/20100101 Firefox/92.0")
+            .user_agent(
+                "Mozilla/5.0 (X11; Linux x86_64; rv:92.0) Gecko/20100101 Firefox/92.0",
+            )
             .default_headers(hm)
             .referer(true)
             .timeout(std::time::Duration::from_secs(2))
@@ -165,7 +175,9 @@ impl ProviderBadJokes {
 
 impl Random for ProviderBadJokes {
     fn random(&self, _team_id: &str) -> Result {
-        let q = self.c.get("https://random-ize.com/bad-jokes/bad-jokes-f.php");
+        let q = self
+            .c
+            .get("https://random-ize.com/bad-jokes/bad-jokes-f.php");
 
         let s = q.send()?.text_with_charset("utf-8")?;
         match self.match_.captures(&s) {
@@ -176,7 +188,11 @@ impl Random for ProviderBadJokes {
                     captures.get(2).unwrap().as_str()
                 ));
             }
-            None => return Err(Error::NoData("no match for random-ize.com/bad-jokes/".to_string())),
+            None => {
+                return Err(Error::NoData(
+                    "no match for random-ize.com/bad-jokes/".to_string(),
+                ))
+            }
         };
     }
 }
@@ -194,7 +210,10 @@ struct BlaguesAPIResponse {
 impl ProviderBlaguesAPI {
     pub fn new(token: &str) -> Self {
         let mut hm = rhm::new();
-        hm.insert(rh::AUTHORIZATION, rhv::from_str(&format!("Bearer {}", token)).unwrap());
+        hm.insert(
+            rh::AUTHORIZATION,
+            rhv::from_str(&format!("Bearer {}", token)).unwrap(),
+        );
         Self {
             client: RClient::builder().default_headers(hm).build().unwrap(),
         }
@@ -203,7 +222,11 @@ impl ProviderBlaguesAPI {
 
 impl Random for ProviderBlaguesAPI {
     fn random(&self, _team_id: &str) -> Result {
-        let joke: BlaguesAPIResponse = self.client.get("https://www.blagues-api.fr/api/random").send()?.json()?;
+        let joke: BlaguesAPIResponse = self
+            .client
+            .get("https://www.blagues-api.fr/api/random")
+            .send()?
+            .json()?;
         return Ok(format!("{}\n…\n…\n{}", joke.joke, joke.answer));
     }
 }
@@ -240,7 +263,8 @@ pub struct Handler<R, S, C> {
 impl<R, S, C> Handler<R, S, C> {
     pub fn new(store: Rc<S>, remotes: R, client: C) -> Self {
         Handler {
-            match_del: Regex::new(r"^!blague del (.*)").expect("cannot compile blague match del regex"),
+            match_del: Regex::new(r"^!blague del (.*)")
+                .expect("cannot compile blague match del regex"),
             store,
             remotes,
             client,
@@ -280,7 +304,8 @@ where
             return Ok(self.client.message(post, &blague)?);
         } else if msg == "!blague list" {
             let blagues = self.store.list(&post.team_id)?;
-            let mut rep = String::from("Liste des blagounettes enregistrées à la meuson:\n");
+            let mut rep =
+                String::from("Liste des blagounettes enregistrées à la meuson:\n");
             for blague in blagues {
                 rep.push_str(&format!(" * {}: {}\n", blague.id, &blague.text));
             }
@@ -295,7 +320,11 @@ where
                         self.store.del(&post.team_id, num)?;
                         return Ok(self.client.reaction(post, "ok_hand")?);
                     }
-                    Err(e) => return Ok(self.client.reply(post, &format!("beurk: {:?}", e))?),
+                    Err(e) => {
+                        return Ok(self
+                            .client
+                            .reply(post, &format!("beurk: {:?}", e))?)
+                    }
                 };
             }
             None => {}
@@ -305,7 +334,10 @@ where
             match msg.splitn(2, " ").collect::<Vec<&str>>().get(1) {
                 Some(blague) => {
                     if blague.len() > 300 {
-                        return Ok(self.client.reply(post, "la blague est trop longue. max 300 caractères")?);
+                        return Ok(self.client.reply(
+                            post,
+                            "la blague est trop longue. max 300 caractères",
+                        )?);
                     }
                     self.store.add(&post.team_id, blague)?;
                     return Ok(self.client.reaction(post, "ok_hand")?);

@@ -56,8 +56,12 @@ impl<C, E> Trigger<C, E> {
             delay_repeat,
             match_list: Regex::new("^!trigger list.*$").unwrap(),
             match_del: Regex::new("^!trigger del \"(.+)\".*").unwrap(),
-            match_reaction: Regex::new("^!trigger reaction \"([^\"]+)\" [:\"]([^:]+)[:\"].*$").unwrap(),
-            match_text: Regex::new("^!trigger text \"([^\"]+)\" \"([^\"]+)\".*$").unwrap(),
+            match_reaction: Regex::new(
+                "^!trigger reaction \"([^\"]+)\" [:\"]([^:]+)[:\"].*$",
+            )
+            .unwrap(),
+            match_text: Regex::new("^!trigger text \"([^\"]+)\" \"([^\"]+)\".*$")
+                .unwrap(),
         }
     }
 
@@ -100,7 +104,10 @@ A per [channel, trigger] antispam is effective and currently configured at {} se
 
         if !message.starts_with("!trigger ") {
             // check or set a per channel rate limit to avoid spamming in heated discussions.
-            let tempo_rate = format!("{}{}--global-channel-rate-limit", &post.team_id, &post.channel_id);
+            let tempo_rate = format!(
+                "{}{}--global-channel-rate-limit",
+                &post.team_id, &post.channel_id
+            );
             if self.tempo.exists(&tempo_rate) {
                 return Ok(());
             }
@@ -150,7 +157,11 @@ A per [channel, trigger] antispam is effective and currently configured at {} se
                     return Ok(self.client.reply(post, &e.to_string())?);
                 }
 
-                let _ = self.db.add_text(&post.team_id, trigger, captures.get(2).unwrap().as_str());
+                let _ = self.db.add_text(
+                    &post.team_id,
+                    trigger,
+                    captures.get(2).unwrap().as_str(),
+                );
                 return Ok(self.client.reaction(post, "ok_hand")?);
             }
             None => {}
@@ -165,7 +176,11 @@ A per [channel, trigger] antispam is effective and currently configured at {} se
                     return Ok(self.client.reply(post, &e.to_string())?);
                 }
 
-                let _ = self.db.add_emoji(&post.team_id, trigger, captures.get(2).unwrap().as_str());
+                let _ = self.db.add_emoji(
+                    &post.team_id,
+                    trigger,
+                    captures.get(2).unwrap().as_str(),
+                );
                 return Ok(self.client.reaction(post, "ok_hand")?);
             }
             None => {}
@@ -173,7 +188,9 @@ A per [channel, trigger] antispam is effective and currently configured at {} se
 
         match self.match_del.captures(message) {
             Some(captures) => {
-                let _ = self.db.del(&post.team_id, captures.get(1).unwrap().as_str())?;
+                let _ = self
+                    .db
+                    .del(&post.team_id, captures.get(1).unwrap().as_str())?;
                 return Ok(self.client.reaction(post, "ok_hand")?);
             }
             None => {}

@@ -36,7 +36,12 @@ impl crate::db::Edits for super::Sqlite {
     /// assert_eq!(None, e.replace_with_file);
     /// # }
     /// ```
-    fn find(&self, user_id: &str, team_id: &str, edit: &str) -> Result<Option<models::Edit>> {
+    fn find(
+        &self,
+        user_id: &str,
+        team_id: &str,
+        edit: &str,
+    ) -> Result<Option<models::Edit>> {
         let res = table::edits
             .filter(
                 table::team_id
@@ -55,7 +60,8 @@ impl crate::db::Edits for super::Sqlite {
     }
 
     fn del_team(&self, team_id: &str, edit: &str) -> Result<()> {
-        let filter = table::edits.filter(table::team_id.eq(team_id).and(table::edit.eq(edit)));
+        let filter =
+            table::edits.filter(table::team_id.eq(team_id).and(table::edit.eq(edit)));
         let _ = diesel::delete(filter).execute(&self.db)?;
         Ok(())
     }
@@ -69,7 +75,9 @@ impl crate::db::Edits for super::Sqlite {
             user_id: None,
         };
 
-        let _ = diesel::insert_into(table::edits).values(&edit_).execute(&self.db)?;
+        let _ = diesel::insert_into(table::edits)
+            .values(&edit_)
+            .execute(&self.db)?;
         Ok(())
     }
 }

@@ -55,7 +55,8 @@ fn main() -> std::result::Result<(), Box<dyn std::error::Error>> {
     taskrunner.add(Arc::new(Tick {}));
 
     // MIDDLEWARES & BASIC HANDLERS
-    let ignore_self = middleware::IgnoreSelf::new(mm_client.my_user_id().to_string().clone());
+    let ignore_self =
+        middleware::IgnoreSelf::new(mm_client.my_user_id().to_string().clone());
     if flag_debug {
         instance.add_middleware(Box::new(middleware::Debug::new("debug")));
     }
@@ -67,8 +68,16 @@ fn main() -> std::result::Result<(), Box<dyn std::error::Error>> {
             .parse()
             .unwrap(),
     );
-    println!("trigger configured with delay of {} seconds", trigger_delay_secs.as_secs());
-    let trigger = handlers::trigger::Trigger::new(botdb.clone(), mm_client.clone(), Tempo::new(), trigger_delay_secs);
+    println!(
+        "trigger configured with delay of {} seconds",
+        trigger_delay_secs.as_secs()
+    );
+    let trigger = handlers::trigger::Trigger::new(
+        botdb.clone(),
+        mm_client.clone(),
+        Tempo::new(),
+        trigger_delay_secs,
+    );
     instance.add_post_handler(Box::new(trigger));
 
     let edits = handlers::edits::Edit::new(botdb.clone(), mm_client.clone());
@@ -107,14 +116,20 @@ fn main() -> std::result::Result<(), Box<dyn std::error::Error>> {
     instance.add_post_handler(Box::new(ww));
 
     // SMS
-    if let (Ok(login), Ok(apikey)) = (env::var("BOT_OCTOPUSH_LOGIN"), env::var("BOT_OCTOPUSH_APIKEY")) {
+    if let (Ok(login), Ok(apikey)) = (
+        env::var("BOT_OCTOPUSH_LOGIN"),
+        env::var("BOT_OCTOPUSH_APIKEY"),
+    ) {
         let smsprov = handlers::sms::Octopush::new(&login, &apikey);
         let sms = handlers::sms::SMS::new(smsprov, botdb.clone(), mm_client.clone());
         instance.add_post_handler(Box::new(sms));
     }
 
     // METEO
-    if let (Ok(cities), Ok(channel)) = (env::var("BOT_METEO_CITIES"), env::var("BOT_METEO_ON_CHANNEL_ID")) {
+    if let (Ok(cities), Ok(channel)) = (
+        env::var("BOT_METEO_CITIES"),
+        env::var("BOT_METEO_ON_CHANNEL_ID"),
+    ) {
         let cities = cities.split(',').map(|p| p.to_string()).collect();
         println!(
             "exec meteo in {:?}",

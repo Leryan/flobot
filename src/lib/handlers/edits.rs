@@ -37,7 +37,8 @@ where
         match res {
             Some(edit) => {
                 if edit.replace_with_text.is_some() {
-                    self.client.edit(&post.id, &edit.replace_with_text.unwrap())?;
+                    self.client
+                        .edit(&post.id, &edit.replace_with_text.unwrap())?;
                 } else if edit.replace_with_file.is_some() {
                     // unimplemented
                 }
@@ -59,7 +60,9 @@ where
         }
 
         if post.team_id == "" {
-            return Ok(self.client.reply(post, "je sais pas encore faire des edits privés :/")?);
+            return Ok(self
+                .client
+                .reply(post, "je sais pas encore faire des edits privés :/")?);
         }
 
         let _ = self.db.add_team(&post.team_id, word, replace)?;
@@ -97,7 +100,11 @@ where
 
         match self.match_add.captures(&message) {
             Some(captures) => {
-                return self.handle_add(post, captures.get(1).unwrap().as_str(), captures.get(2).unwrap().as_str());
+                return self.handle_add(
+                    post,
+                    captures.get(1).unwrap().as_str(),
+                    captures.get(2).unwrap().as_str(),
+                );
             }
             None => {}
         };

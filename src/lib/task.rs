@@ -83,15 +83,25 @@ impl SequentialTaskRunner {
                     Err(e) => {
                         println!("task {} failed: {:?}", key, e);
                         match e {
-                            Error::Reschedule(_) => self.tempo.set(key, Duration::from_secs(123)),
-                            Error::CannotExec((exec_in, _)) => self.tempo.set(key, exec_in),
-                            Error::ExpRetry(_) => self.tempo.set(key, Duration::from_secs(196)), // TODO: implement exp
+                            Error::Reschedule(_) => {
+                                self.tempo.set(key, Duration::from_secs(123))
+                            }
+                            Error::CannotExec((exec_in, _)) => {
+                                self.tempo.set(key, exec_in)
+                            }
+                            Error::ExpRetry(_) => {
+                                self.tempo.set(key, Duration::from_secs(196))
+                            } // TODO: implement exp
                         };
                     }
                     Ok(rai) => {
                         let dur = rai.max(Duration::from_secs(60));
                         let at = Local::now() + CDuration::from_std(dur).unwrap();
-                        println!("task {} next execution scheduled at {}", task.name(), at);
+                        println!(
+                            "task {} next execution scheduled at {}",
+                            task.name(),
+                            at
+                        );
                         self.tempo.set(key, dur);
                     }
                 };
@@ -157,15 +167,24 @@ impl<S: crate::client::Sender> Task for Meteo<S> {
 
         for city in self.cities.iter() {
             let url = format!("https://wttr.in/{}", city);
-            let r = Client::new().get(&url).query(&[("format", "%l: %c %t")]).send();
+            let r = Client::new()
+                .get(&url)
+                .query(&[("format", "%l: %c %t")])
+                .send();
 
             if let Err(e) = r {
-                return Err(Error::CannotExec((Duration::from_secs(24 * 3600), e.to_string())));
+                return Err(Error::CannotExec((
+                    Duration::from_secs(24 * 3600),
+                    e.to_string(),
+                )));
             }
 
             let v = r.unwrap();
             if v.status().is_client_error() {
-                return Err(Error::CannotExec((Duration::from_secs(24 * 3600), v.status().to_string())));
+                return Err(Error::CannotExec((
+                    Duration::from_secs(24 * 3600),
+                    v.status().to_string(),
+                )));
             }
             if v.status().is_server_error() {
                 return Err(Error::ExpRetry(v.status().to_string()));
@@ -179,7 +198,8 @@ impl<S: crate::client::Sender> Task for Meteo<S> {
             return Err(Error::ExpRetry("cannot post".into()));
         }
 
-        let tomorrow = now.with_hour(7).unwrap().with_minute(23).unwrap() + cduration_from_secs(24 * 3600);
+        let tomorrow = now.with_hour(7).unwrap().with_minute(23).unwrap()
+            + cduration_from_secs(24 * 3600);
         Ok((tomorrow - now).to_std().unwrap())
     }
 }

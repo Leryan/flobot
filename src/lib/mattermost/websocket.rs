@@ -65,14 +65,20 @@ impl EventClient for super::client::Mattermost {
                         println!("websocket io error: {:?}", details);
                     }
                     e => {
-                        println!("websocket disconnected with unrecoverable error: {:?}", e);
+                        println!(
+                            "websocket disconnected with unrecoverable error: {:?}",
+                            e
+                        );
                         retry = false;
                     }
                 }
             }
 
             if retry {
-                println!("websocket returned, retrying in {} seconds", reco_time.as_secs());
+                println!(
+                    "websocket returned, retrying in {} seconds",
+                    reco_time.as_secs()
+                );
                 std::thread::sleep(reco_time);
             } else {
                 return;

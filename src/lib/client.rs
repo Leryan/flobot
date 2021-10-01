@@ -35,7 +35,12 @@ pub trait Sender {
 
 pub trait Channel {
     // create_private returns the room id to be used as channel_id in a GenericPost
-    fn create_private(&self, team_id: &str, name: &str, users: &Vec<String>) -> Result<String>;
+    fn create_private(
+        &self,
+        team_id: &str,
+        name: &str,
+        users: &Vec<String>,
+    ) -> Result<String>;
     fn archive_channel(&self, channel_id: &str) -> Result<()>;
 }
 

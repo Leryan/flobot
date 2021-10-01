@@ -7,7 +7,12 @@ use crate::models;
 use diesel::prelude::*;
 
 impl crate::db::SMS for super::Sqlite {
-    fn set_contact(&self, team_id: &str, name: &str, number: &str) -> Result<models::SMSContact> {
+    fn set_contact(
+        &self,
+        team_id: &str,
+        name: &str,
+        number: &str,
+    ) -> Result<models::SMSContact> {
         self.db.transaction::<(), Error, _>(|| {
             let res = tc::sms_contact
                 .filter(tc::team_id.eq(team_id).and(tc::name.eq(name)))
@@ -27,7 +32,9 @@ impl crate::db::SMS for super::Sqlite {
                         name: name,
                         number: number,
                     };
-                    diesel::insert_into(tc::sms_contact).values(&contact).execute(&self.db)?;
+                    diesel::insert_into(tc::sms_contact)
+                        .values(&contact)
+                        .execute(&self.db)?;
                     Ok(())
                 }
                 Err(e) => Err(e),
@@ -37,15 +44,30 @@ impl crate::db::SMS for super::Sqlite {
         })?;
 
         Ok(tc::sms_contact
-            .filter(tc::name.eq(name).and(tc::number.eq(number)).and(tc::team_id.eq(team_id)))
+            .filter(
+                tc::name
+                    .eq(name)
+                    .and(tc::number.eq(number))
+                    .and(tc::team_id.eq(team_id)),
+            )
             .first(&self.db)?)
     }
 
     fn list_contacts(&self, team_id: &str) -> Result<Vec<models::SMSContact>> {
-        Ok(tc::sms_contact.filter(tc::team_id.eq(team_id)).order_by(tc::name).load(&self.db)?)
+        Ok(tc::sms_contact
+            .filter(tc::team_id.eq(team_id))
+            .order_by(tc::name)
+            .load(&self.db)?)
     }
 
-    fn set_prepare(&self, team_id: &str, contact_id: &i32, trigname: &str, name: &str, text: &str) -> Result<models::SMSPrepare> {
+    fn set_prepare(
+        &self,
+        team_id: &str,
+        contact_id: &i32,
+        trigname: &str,
+        name: &str,
+        text: &str,
+    ) -> Result<models::SMSPrepare> {
         self.db.transaction::<_, Error, _>(|| {
             let res = tp::sms_prepare
                 .filter(
@@ -71,7 +93,9 @@ impl crate::db::SMS for super::Sqlite {
                         text: text,
                         trigname: trigname,
                     };
-                    diesel::insert_into(tp::sms_prepare).values(&prepare).execute(&self.db)?;
+                    diesel::insert_into(tp::sms_prepare)
+                        .values(&prepare)
+                        .execute(&self.db)?;
                     Ok(())
                 }
                 Err(e) => Err(e),
@@ -90,7 +114,10 @@ impl crate::db::SMS for super::Sqlite {
             .first(&self.db)?)
     }
 
-    fn list_prepare(&self, team_id: &str) -> Result<Vec<(models::SMSPrepare, models::SMSContact)>> {
+    fn list_prepare(
+        &self,
+        team_id: &str,
+    ) -> Result<Vec<(models::SMSPrepare, models::SMSContact)>> {
         let res = tp::sms_prepare
             .filter(tp::team_id.eq(team_id))
             .order_by(tp::trigname)
@@ -99,7 +126,12 @@ impl crate::db::SMS for super::Sqlite {
         Ok(res)
     }
 
-    fn get_contact(&self, team_id: &str, name: Option<&str>, id: Option<&i32>) -> Result<Option<models::SMSContact>> {
+    fn get_contact(
+        &self,
+        team_id: &str,
+        name: Option<&str>,
+        id: Option<&i32>,
+    ) -> Result<Option<models::SMSContact>> {
         let mut query = tc::sms_contact.into_boxed();
         query = query.filter(tc::team_id.eq(team_id));
         if let Some(name) = name {
@@ -115,7 +147,11 @@ impl crate::db::SMS for super::Sqlite {
         }
     }
 
-    fn get_prepare(&self, team_id: &str, trigname: &str) -> Result<Option<models::SMSPrepare>> {
+    fn get_prepare(
+        &self,
+        team_id: &str,
+        trigname: &str,
+    ) -> Result<Option<models::SMSPrepare>> {
         match tp::sms_prepare
             .filter(tp::team_id.eq(team_id).and(tp::trigname.eq(trigname)))
             .first(&self.db)

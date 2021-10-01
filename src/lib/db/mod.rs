@@ -54,14 +54,23 @@ pub trait Trigger {
 
 pub trait Edits {
     fn list(&self, team_id: &str) -> Result<Vec<business_models::Edit>>;
-    fn find(&self, user_id: &str, team_id: &str, edit: &str) -> Result<Option<business_models::Edit>>;
+    fn find(
+        &self,
+        user_id: &str,
+        team_id: &str,
+        edit: &str,
+    ) -> Result<Option<business_models::Edit>>;
     fn del_team(&self, team_id: &str, edit: &str) -> Result<()>;
     fn add_team(&self, team_id: &str, edit: &str, replace: &str) -> Result<()>;
 }
 
 pub trait Joke {
     // with 0 <= relnum < count()
-    fn pick(&self, team_id: &str, relnum: u64) -> Result<Option<business_models::Blague>>;
+    fn pick(
+        &self,
+        team_id: &str,
+        relnum: u64,
+    ) -> Result<Option<business_models::Blague>>;
     fn count(&self, team_id: &str) -> Result<u64>;
     fn list(&self, team_id: &str) -> Result<Vec<business_models::Blague>>;
     fn del(&self, team_id: &str, id: i32) -> Result<()>;
@@ -69,12 +78,36 @@ pub trait Joke {
 }
 
 pub trait SMS {
-    fn set_contact(&self, team_id: &str, name: &str, number: &str) -> Result<business_models::SMSContact>;
-    fn set_prepare(&self, team_id: &str, contact_id: &i32, trigname: &str, name: &str, text: &str) -> Result<business_models::SMSPrepare>;
-    fn get_contact(&self, team_id: &str, name: Option<&str>, id: Option<&i32>) -> Result<Option<business_models::SMSContact>>;
-    fn get_prepare(&self, team_id: &str, trigname: &str) -> Result<Option<business_models::SMSPrepare>>;
+    fn set_contact(
+        &self,
+        team_id: &str,
+        name: &str,
+        number: &str,
+    ) -> Result<business_models::SMSContact>;
+    fn set_prepare(
+        &self,
+        team_id: &str,
+        contact_id: &i32,
+        trigname: &str,
+        name: &str,
+        text: &str,
+    ) -> Result<business_models::SMSPrepare>;
+    fn get_contact(
+        &self,
+        team_id: &str,
+        name: Option<&str>,
+        id: Option<&i32>,
+    ) -> Result<Option<business_models::SMSContact>>;
+    fn get_prepare(
+        &self,
+        team_id: &str,
+        trigname: &str,
+    ) -> Result<Option<business_models::SMSPrepare>>;
     fn list_contacts(&self, team_id: &str) -> Result<Vec<business_models::SMSContact>>;
-    fn list_prepare(&self, team_id: &str) -> Result<Vec<(business_models::SMSPrepare, business_models::SMSContact)>>;
+    fn list_prepare(
+        &self,
+        team_id: &str,
+    ) -> Result<Vec<(business_models::SMSPrepare, business_models::SMSContact)>>;
 }
 
 pub fn conn(db_url: &str) -> DatabaseConnection {
