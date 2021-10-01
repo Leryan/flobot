@@ -1,6 +1,6 @@
 use crate::client;
 use crate::db::Joke as DB;
-use crate::handlers::Handler;
+use crate::handlers::Handler as BotHandler;
 use crate::models::GenericPost;
 use regex::Regex;
 use reqwest::blocking::Client as RClient;
@@ -91,7 +91,7 @@ where
     }
 }
 
-pub struct Sqlite<R, D>
+pub struct ProviderSQLite<R, D>
 where
     R: rand::Rng,
 {
@@ -99,7 +99,7 @@ where
     rng: RefCell<R>,
 }
 
-impl<R, D> Sqlite<R, D>
+impl<R, D> ProviderSQLite<R, D>
 where
     R: rand::Rng,
     D: crate::db::Joke,
@@ -112,7 +112,7 @@ where
     }
 }
 
-impl<R, D> Random for Sqlite<R, D>
+impl<R, D> Random for ProviderSQLite<R, D>
 where
     R: rand::Rng,
     D: crate::db::Joke,
@@ -130,12 +130,12 @@ where
     }
 }
 
-pub struct BadJokes {
+pub struct ProviderBadJokes {
     c: RClient,
     match_: Regex,
 }
 
-impl BadJokes {
+impl ProviderBadJokes {
     pub fn new() -> Self {
         let mut hm = rhm::new();
         hm.insert(rh::REFERER, rhv::from_str("https://random-ize.com/bad-jokes/").unwrap());
@@ -163,7 +163,7 @@ impl BadJokes {
     }
 }
 
-impl Random for BadJokes {
+impl Random for ProviderBadJokes {
     fn random(&self, _team_id: &str) -> Result {
         let q = self.c.get("https://random-ize.com/bad-jokes/bad-jokes-f.php");
 
@@ -181,7 +181,7 @@ impl Random for BadJokes {
     }
 }
 
-pub struct BlaguesAPI {
+pub struct ProviderBlaguesAPI {
     client: RClient,
 }
 
@@ -191,7 +191,7 @@ struct BlaguesAPIResponse {
     pub answer: String,
 }
 
-impl BlaguesAPI {
+impl ProviderBlaguesAPI {
     pub fn new(token: &str) -> Self {
         let mut hm = rhm::new();
         hm.insert(rh::AUTHORIZATION, rhv::from_str(&format!("Bearer {}", token)).unwrap());
@@ -201,18 +201,18 @@ impl BlaguesAPI {
     }
 }
 
-impl Random for BlaguesAPI {
+impl Random for ProviderBlaguesAPI {
     fn random(&self, _team_id: &str) -> Result {
         let joke: BlaguesAPIResponse = self.client.get("https://www.blagues-api.fr/api/random").send()?.json()?;
         return Ok(format!("{}\n…\n…\n{}", joke.joke, joke.answer));
     }
 }
 
-pub struct URLs {
+pub struct ProviderFile {
     pub urls: Vec<String>,
 }
 
-impl Random for URLs {
+impl Random for ProviderFile {
     fn random(&self, _team_id: &str) -> Result {
         let rnd = rand::random::<usize>() % self.urls.len();
         Ok(self.urls[rnd].clone())
@@ -230,16 +230,16 @@ impl From<Error> for crate::handlers::Error {
     }
 }
 
-pub struct JokeHandler<R, S, C> {
+pub struct Handler<R, S, C> {
     match_del: Regex,
     store: Rc<S>,
     remotes: R,
     client: C,
 }
 
-impl<R, S, C> JokeHandler<R, S, C> {
+impl<R, S, C> Handler<R, S, C> {
     pub fn new(store: Rc<S>, remotes: R, client: C) -> Self {
-        JokeHandler {
+        Handler {
             match_del: Regex::new(r"^!blague del (.*)").expect("cannot compile blague match del regex"),
             store,
             remotes,
@@ -248,7 +248,7 @@ impl<R, S, C> JokeHandler<R, S, C> {
     }
 }
 
-impl<R, C, S> Handler for JokeHandler<R, S, C>
+impl<R, C, S> BotHandler for Handler<R, S, C>
 where
     C: client::Sender,
     S: DB,
@@ -326,7 +326,7 @@ mod tests {
 
     #[test]
     fn test_random_bad_jokes() -> std::result::Result<(), Error> {
-        let bj = BadJokes::new();
+        let bj = ProviderBadJokes::new();
         let _ = bj.random("tid1")?;
         let _ = bj.random("tid2")?;
         Ok(())
@@ -339,7 +339,7 @@ mod tests {
         dotenv::from_filename("flobot.env").ok();
 
         let test_token = env::var("BOT_BLAGUESAPI_TOKEN").unwrap();
-        let ba = BlaguesAPI::new(&test_token);
+        let ba = ProviderBlaguesAPI::new(&test_token);
         let r1 = ba.random("tid")?;
         assert_ne!("", r1.as_str());
         let r2 = ba.random("tid")?;

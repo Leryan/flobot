@@ -10,7 +10,12 @@ impl Sqlite {
     }
 }
 
-mod joke;
+/// new is a shortcut for Sqlite::new
+pub fn new(db: SqliteConnection) -> Sqlite {
+    Sqlite::new(db)
+}
+
 mod edits;
+mod joke;
 mod sms;
 mod trigger;

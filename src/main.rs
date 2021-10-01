@@ -6,7 +6,6 @@ use dotenv;
 use flobot::client::*;
 use flobot::conf::Conf;
 use flobot::db;
-use flobot::db::sqlite as dbs;
 use flobot::db::tempo::Tempo;
 use flobot::handlers;
 use flobot::instance::Instance;
@@ -48,7 +47,7 @@ fn main() -> std::result::Result<(), Box<dyn std::error::Error>> {
 
     // BASICS
     let mm_client = Mattermost::new(cfg.clone())?;
-    let botdb = Rc::new(dbs::Sqlite::new(conn));
+    let botdb = Rc::new(db::sqlite::new(conn));
     let mut instance = Instance::new(mm_client.clone());
 
     // TASKRUNNER
@@ -69,19 +68,19 @@ fn main() -> std::result::Result<(), Box<dyn std::error::Error>> {
             .unwrap(),
     );
     println!("trigger configured with delay of {} seconds", trigger_delay_secs.as_secs());
-    let trigger = handlers::trigger::Trigger::new(Rc::clone(&botdb), mm_client.clone(), Tempo::new(), trigger_delay_secs);
+    let trigger = handlers::trigger::Trigger::new(botdb.clone(), mm_client.clone(), Tempo::new(), trigger_delay_secs);
     instance.add_post_handler(Box::new(trigger));
 
-    let edits = handlers::edits::Edit::new(Rc::clone(&botdb), mm_client.clone());
+    let edits = handlers::edits::Edit::new(botdb.clone(), mm_client.clone());
     instance.add_post_handler(Box::new(edits));
 
     // BLAGUES
     let mut jokeproviders: Vec<flobot::joke::Provider> = vec![
-        Arc::new(joke::BadJokes::new()),
-        Arc::new(joke::Sqlite::new(rand::thread_rng(), Rc::clone(&botdb))),
+        Arc::new(joke::ProviderBadJokes::new()),
+        Arc::new(joke::ProviderSQLite::new(rand::thread_rng(), botdb.clone())),
     ];
     if let Ok(token) = env::var("BOT_BLAGUESAPI_TOKEN") {
-        let blaguesapi = joke::BlaguesAPI::new(token.as_str());
+        let blaguesapi = joke::ProviderBlaguesAPI::new(token.as_str());
         jokeproviders.push(Arc::new(blaguesapi));
     }
 
@@ -92,14 +91,14 @@ fn main() -> std::result::Result<(), Box<dyn std::error::Error>> {
                 urls.push(line.to_string());
             }
 
-            jokeproviders.push(Arc::new(joke::URLs { urls }));
+            jokeproviders.push(Arc::new(joke::ProviderFile { urls }));
         } else {
             println!("cannot read jokes from {}", filepath);
         }
     }
 
     let rnd_blague = joke::SelectProvider::new(rand::thread_rng(), jokeproviders);
-    let blague = joke::JokeHandler::new(Rc::clone(&botdb), rnd_blague, mm_client.clone());
+    let blague = joke::Handler::new(botdb.clone(), rnd_blague, mm_client.clone());
 
     instance.add_post_handler(Box::new(blague));
 
@@ -110,7 +109,7 @@ fn main() -> std::result::Result<(), Box<dyn std::error::Error>> {
     // SMS
     if let (Ok(login), Ok(apikey)) = (env::var("BOT_OCTOPUSH_LOGIN"), env::var("BOT_OCTOPUSH_APIKEY")) {
         let smsprov = handlers::sms::Octopush::new(&login, &apikey);
-        let sms = handlers::sms::SMS::new(smsprov, Rc::clone(&botdb), mm_client.clone());
+        let sms = handlers::sms::SMS::new(smsprov, botdb.clone(), mm_client.clone());
         instance.add_post_handler(Box::new(sms));
     }
 
