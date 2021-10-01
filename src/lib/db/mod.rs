@@ -4,7 +4,6 @@ use std::convert::From;
 
 use crate::models as business_models;
 
-pub mod remote;
 pub mod tempo;
 
 #[cfg(feature = "sqlite")]
@@ -60,7 +59,7 @@ pub trait Edits {
     fn add_team(&self, team_id: &str, edit: &str, replace: &str) -> Result<()>;
 }
 
-pub trait Blague {
+pub trait Joke {
     // with 0 <= relnum < count()
     fn pick(&self, team_id: &str, relnum: u64) -> Result<Option<business_models::Blague>>;
     fn count(&self, team_id: &str) -> Result<u64>;

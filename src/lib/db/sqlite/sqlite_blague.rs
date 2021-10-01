@@ -4,7 +4,7 @@ use crate::db::Result;
 use crate::models::Blague;
 use diesel::prelude::*;
 
-impl crate::db::Blague for super::Sqlite {
+impl crate::db::Joke for super::Sqlite {
     fn pick(&self, team_id: &str, relnum: u64) -> Result<Option<Blague>> {
         let filter = table::blague.filter(table::team_id.eq(team_id)).offset(relnum as i64);
         match filter.first(&self.db) {

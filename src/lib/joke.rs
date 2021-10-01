@@ -1,6 +1,3 @@
-use super::Blague;
-use super::Error;
-use super::Result;
 use regex::Regex;
 use reqwest::blocking::Client as RClient;
 use reqwest::header as rh;
@@ -12,7 +9,32 @@ use std::convert::From;
 use std::rc::Rc;
 use std::sync::Arc;
 
-impl From<crate::db::Error> for super::Error {
+#[derive(Debug)]
+pub enum Error {
+    Database(String),
+    Client(String),
+    NoData(String),
+    Other(String),
+}
+
+pub type Result = std::result::Result<String, Error>;
+
+impl From<reqwest::Error> for Error {
+    fn from(e: reqwest::Error) -> Self {
+        if e.is_builder() || e.is_status() || e.is_timeout() {
+            return Self::Client(e.to_string());
+        }
+
+        Self::Other(e.to_string())
+    }
+}
+
+pub trait Random {
+    fn random(&self, team_id: &str) -> Result;
+}
+
+
+impl From<crate::db::Error> for Error {
     fn from(e: crate::db::Error) -> Self {
         match e {
             crate::db::Error::Database(e) => Error::Database(e),
@@ -21,27 +43,27 @@ impl From<crate::db::Error> for super::Error {
     }
 }
 
-pub type Remote = Arc<dyn Blague>;
+pub type Provider = Arc<dyn Random>;
 
-pub struct Select<R> {
-    remotes: Vec<Remote>,
+pub struct SelectProvider<R> {
+    remotes: Vec<Provider>,
     rng: RefCell<R>,
 }
 
-impl<R: rand::Rng> Select<R> {
-    pub fn new(rng: R, remotes: Vec<Remote>) -> Self {
+impl<R: rand::Rng> SelectProvider<R> {
+    pub fn new(rng: R, remotes: Vec<Provider>) -> Self {
         Self {
             remotes: remotes,
             rng: RefCell::new(rng),
         }
     }
 
-    pub fn push(&mut self, remote: Remote) {
+    pub fn push(&mut self, remote: Provider) {
         self.remotes.push(remote)
     }
 }
 
-impl<R> Blague for Select<R>
+impl<R> Random for SelectProvider<R>
 where
     R: rand::Rng,
 {
@@ -77,7 +99,7 @@ where
 impl<R, D> Sqlite<R, D>
 where
     R: rand::Rng,
-    D: crate::db::Blague,
+    D: crate::db::Joke,
 {
     pub fn new(rng: R, db: Rc<D>) -> Self {
         Self {
@@ -87,10 +109,10 @@ where
     }
 }
 
-impl<R, D> Blague for Sqlite<R, D>
+impl<R, D> Random for Sqlite<R, D>
 where
     R: rand::Rng,
-    D: crate::db::Blague,
+    D: crate::db::Joke,
 {
     fn random(&self, team_id: &str) -> Result {
         let l = self.db.count(team_id)?;
@@ -138,7 +160,7 @@ impl BadJokes {
     }
 }
 
-impl Blague for BadJokes {
+impl Random for BadJokes {
     fn random(&self, _team_id: &str) -> Result {
         let q = self.c.get("https://random-ize.com/bad-jokes/bad-jokes-f.php");
 
@@ -176,7 +198,7 @@ impl BlaguesAPI {
     }
 }
 
-impl Blague for BlaguesAPI {
+impl Random for BlaguesAPI {
     fn random(&self, _team_id: &str) -> Result {
         let joke: BlaguesAPIResponse = self.client.get("https://www.blagues-api.fr/api/random").send()?.json()?;
         return Ok(format!("{}\n…\n…\n{}", joke.joke, joke.answer));
@@ -187,7 +209,7 @@ pub struct URLs {
     pub urls: Vec<String>,
 }
 
-impl Blague for URLs {
+impl Random for URLs {
     fn random(&self, _team_id: &str) -> Result {
         let rnd = rand::random::<usize>() % self.urls.len();
         Ok(self.urls[rnd].clone())

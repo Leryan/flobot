@@ -6,7 +6,7 @@ use dotenv;
 use flobot::client::*;
 use flobot::conf::Conf;
 use flobot::db;
-use flobot::db::remote::blague as rdb_blague;
+use flobot::joke;
 use flobot::db::sqlite as dbs;
 use flobot::db::tempo::Tempo;
 use flobot::handlers;
@@ -76,14 +76,15 @@ fn main() -> std::result::Result<(), Box<dyn std::error::Error>> {
     instance.add_post_handler(Box::new(edits));
 
     // BLAGUES
-    let mut jokeproviders: Vec<flobot::db::remote::blague::Remote> = vec![
-        Arc::new(rdb_blague::BadJokes::new()),
-        Arc::new(rdb_blague::Sqlite::new(rand::thread_rng(), Rc::clone(&botdb))),
+    let mut jokeproviders: Vec<flobot::joke::Provider> = vec![
+        Arc::new(joke::BadJokes::new()),
+        Arc::new(joke::Sqlite::new(rand::thread_rng(), Rc::clone(&botdb))),
     ];
     if let Ok(token) = env::var("BOT_BLAGUESAPI_TOKEN") {
-        let blaguesapi = rdb_blague::BlaguesAPI::new(token.as_str());
+        let blaguesapi = joke::BlaguesAPI::new(token.as_str());
         jokeproviders.push(Arc::new(blaguesapi));
     }
+
     if let Ok(filepath) = env::var("BOT_BLAGUES_URLS") {
         if let Ok(content) = fs::read_to_string(filepath.clone()) {
             let mut urls = vec![];
@@ -91,13 +92,13 @@ fn main() -> std::result::Result<(), Box<dyn std::error::Error>> {
                 urls.push(line.to_string());
             }
 
-            jokeproviders.push(Arc::new(rdb_blague::URLs { urls }));
+            jokeproviders.push(Arc::new(joke::URLs { urls }));
         } else {
             println!("cannot read jokes from {}", filepath);
         }
     }
 
-    let rnd_blague = rdb_blague::Select::new(rand::thread_rng(), jokeproviders);
+    let rnd_blague = joke::SelectProvider::new(rand::thread_rng(), jokeproviders);
     let blague = handlers::blague::Blague::new(Rc::clone(&botdb), rnd_blague, mm_client.clone());
 
     instance.add_post_handler(Box::new(blague));

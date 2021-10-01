@@ -5,6 +5,7 @@ pub mod client;
 pub mod conf;
 pub mod db;
 pub mod handlers;
+pub mod joke;
 pub mod instance;
 pub mod mattermost;
 pub mod middleware;

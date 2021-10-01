@@ -1,19 +1,19 @@
 use super::{Handler, Result};
 use crate::client;
-use crate::db::remote;
-use crate::db::Blague as DBBlague;
+use crate::joke::{Random, Error};
+use crate::db::Joke as DB;
 use crate::models::GenericPost;
 use regex::Regex;
 use std::convert::From;
 use std::rc::Rc;
 
-impl From<remote::Error> for crate::handlers::Error {
-    fn from(e: remote::Error) -> Self {
+impl From<Error> for crate::handlers::Error {
+    fn from(e: Error) -> Self {
         match e {
-            remote::Error::Client(s) => crate::handlers::Error::Timeout(s),
-            remote::Error::NoData(s) => crate::handlers::Error::Database(s),
-            remote::Error::Other(s) => crate::handlers::Error::Other(s),
-            remote::Error::Database(s) => crate::handlers::Error::Database(s),
+            Error::Client(s) => crate::handlers::Error::Timeout(s),
+            Error::NoData(s) => crate::handlers::Error::Database(s),
+            Error::Other(s) => crate::handlers::Error::Other(s),
+            Error::Database(s) => crate::handlers::Error::Database(s),
         }
     }
 }
@@ -39,8 +39,8 @@ impl<R, S, C> Blague<R, S, C> {
 impl<R, C, S> Handler for Blague<R, S, C>
 where
     C: client::Sender,
-    S: DBBlague,
-    R: remote::Blague,
+    S: DB,
+    R: Random,
 {
     type Data = GenericPost;
 
