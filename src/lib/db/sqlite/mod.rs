@@ -10,7 +10,7 @@ impl Sqlite {
     }
 }
 
-mod sqlite_blague;
-mod sqlite_edits;
-mod sqlite_sms;
-mod sqlite_trigger;
+mod joke;
+mod edits;
+mod sms;
+mod trigger;
