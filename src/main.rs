@@ -106,8 +106,11 @@ fn main() -> std::result::Result<(), Box<dyn std::error::Error>> {
         }
     }
 
-    let rnd_blague = joke::SelectProvider::new(rand::thread_rng(), jokeproviders);
-    let blague = joke::Handler::new(botdb.clone(), rnd_blague, mm_client.clone());
+    let blague = joke::Handler::new(
+        botdb.clone(),
+        joke::SelectProvider::new(rand::thread_rng(), jokeproviders),
+        mm_client.clone(),
+    );
 
     instance.add_post_handler(Box::new(blague));
 
