@@ -16,6 +16,7 @@ sqlite = []
 postgres = []
 
 [dependencies]
+base64 = "0"
 chrono = "0.4"
 diesel = { version = "1.4", features = ["sqlite"] }
 diesel_migrations = { version="1.4", features= ["sqlite"]}
@@ -29,4 +30,7 @@ r2d2_sqlite = "0.18"
 regex = "1"
 reqwest = { version = "0.11", features = ["blocking", "json", "gzip"] }
 rand = "0.8"
+#simple-server = "0"
+url = "2"
 uuid = { version = "0.8", features = ["v4"] }
+#http = "*"

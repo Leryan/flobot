@@ -6,7 +6,6 @@ use crate::middleware::Middleware;
 use crate::models::{GenericEvent, GenericPost, StatusCode, StatusError};
 use crossbeam::crossbeam_channel::{Receiver, RecvTimeoutError};
 use std::convert::From;
-use std::rc::Rc;
 use std::time::Duration;
 
 #[derive(Debug)]
@@ -50,11 +49,11 @@ pub struct Instance<C> {
     middlewares: Vec<Box<dyn Middleware>>,
     post_handlers: Vec<PostHandler>,
     helps: std::collections::HashMap<String, String>,
-    client: Rc<C>,
+    client: C,
 }
 
 impl<C: client::Sender + client::Notifier> Instance<C> {
-    pub fn new(client: Rc<C>) -> Self {
+    pub fn new(client: C) -> Self {
         Instance {
             middlewares: Vec::new(),
             post_handlers: Vec::new(),

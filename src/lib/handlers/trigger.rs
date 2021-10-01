@@ -38,7 +38,7 @@ pub fn valid_match(find: &str, message: &str) -> bool {
 
 pub struct Trigger<C, E> {
     db: Rc<E>,
-    client: Rc<C>,
+    client: C,
     match_list: Regex,
     match_del: Regex,
     match_text: Regex,
@@ -48,7 +48,7 @@ pub struct Trigger<C, E> {
 }
 
 impl<C, E> Trigger<C, E> {
-    pub fn new(db: Rc<E>, client: Rc<C>, tempo: Tempo, delay_repeat: Duration) -> Self {
+    pub fn new(db: Rc<E>, client: C, tempo: Tempo, delay_repeat: Duration) -> Self {
         Self {
             db,
             client,

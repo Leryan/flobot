@@ -332,6 +332,7 @@ dependencies = [
 name = "flobot"
 version = "0.5.0"
 dependencies = [
+ "base64",
  "chrono",
  "crossbeam",
  "diesel",
@@ -344,6 +345,7 @@ dependencies = [
  "reqwest",
  "serde",
  "serde_json",
+ "url",
  "uuid",
  "ws",
 ]

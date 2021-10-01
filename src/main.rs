@@ -6,7 +6,7 @@ use dotenv;
 use flobot::client::*;
 use flobot::conf::Conf;
 use flobot::db;
-use flobot::db::remote::{blague as rdb_blague, Blague};
+use flobot::db::remote::blague as rdb_blague;
 use flobot::db::sqlite as dbs;
 use flobot::db::tempo::Tempo;
 use flobot::handlers;
@@ -47,10 +47,13 @@ fn main() -> std::result::Result<(), Box<dyn std::error::Error>> {
     println!("init client, db, handler, middleware...");
 
     // BASICS
-    let mm_client = Rc::new(Mattermost::new(cfg.clone())?);
-    let client = Rc::clone(&mm_client);
+    let mm_client = Mattermost::new(cfg.clone())?;
     let botdb = Rc::new(dbs::Sqlite::new(conn));
-    let mut instance = Instance::new(client);
+    let mut instance = Instance::new(mm_client.clone());
+
+    // TASKRUNNER
+    let mut taskrunner = SequentialTaskRunner::new();
+    taskrunner.add(Arc::new(Tick {}));
 
     // MIDDLEWARES & BASIC HANDLERS
     let ignore_self = middleware::IgnoreSelf::new(mm_client.my_user_id().to_string().clone());
@@ -66,20 +69,20 @@ fn main() -> std::result::Result<(), Box<dyn std::error::Error>> {
             .unwrap(),
     );
     println!("trigger configured with delay of {} seconds", trigger_delay_secs.as_secs());
-    let trigger = handlers::trigger::Trigger::new(Rc::clone(&botdb), Rc::clone(&mm_client), Tempo::new(), trigger_delay_secs);
+    let trigger = handlers::trigger::Trigger::new(Rc::clone(&botdb), mm_client.clone(), Tempo::new(), trigger_delay_secs);
     instance.add_post_handler(Box::new(trigger));
 
-    let edits = handlers::edits::Edit::new(Rc::clone(&botdb), Rc::clone(&mm_client));
+    let edits = handlers::edits::Edit::new(Rc::clone(&botdb), mm_client.clone());
     instance.add_post_handler(Box::new(edits));
 
     // BLAGUES
-    let mut blague_providers: Vec<Box<dyn Blague>> = vec![
-        Box::new(rdb_blague::BadJokes::new()),
-        Box::new(rdb_blague::Sqlite::new(rand::thread_rng(), Rc::clone(&botdb))),
+    let mut jokeproviders: Vec<flobot::db::remote::blague::Remote> = vec![
+        Arc::new(rdb_blague::BadJokes::new()),
+        Arc::new(rdb_blague::Sqlite::new(rand::thread_rng(), Rc::clone(&botdb))),
     ];
     if let Ok(token) = env::var("BOT_BLAGUESAPI_TOKEN") {
         let blaguesapi = rdb_blague::BlaguesAPI::new(token.as_str());
-        blague_providers.push(Box::new(blaguesapi));
+        jokeproviders.push(Arc::new(blaguesapi));
     }
     if let Ok(filepath) = env::var("BOT_BLAGUES_URLS") {
         if let Ok(content) = fs::read_to_string(filepath.clone()) {
@@ -88,32 +91,41 @@ fn main() -> std::result::Result<(), Box<dyn std::error::Error>> {
                 urls.push(line.to_string());
             }
 
-            blague_providers.push(Box::new(rdb_blague::URLs { urls }));
+            jokeproviders.push(Arc::new(rdb_blague::URLs { urls }));
         } else {
             println!("cannot read jokes from {}", filepath);
         }
     }
-    let rnd_blague = rdb_blague::Select::new(rand::thread_rng(), blague_providers);
-    let blague = handlers::blague::Blague::new(Rc::clone(&botdb), rnd_blague, Rc::clone(&mm_client));
+
+    let rnd_blague = rdb_blague::Select::new(rand::thread_rng(), jokeproviders);
+    let blague = handlers::blague::Blague::new(Rc::clone(&botdb), rnd_blague, mm_client.clone());
 
     instance.add_post_handler(Box::new(blague));
 
     // WEREWOLF GAME
-    let ww = handlers::ww::Handler::new(Rc::clone(&mm_client));
+    let ww = handlers::ww::Handler::new(mm_client.clone());
     instance.add_post_handler(Box::new(ww));
 
     // SMS
     if let (Ok(login), Ok(apikey)) = (env::var("BOT_OCTOPUSH_LOGIN"), env::var("BOT_OCTOPUSH_APIKEY")) {
         let smsprov = handlers::sms::Octopush::new(&login, &apikey);
-        let sms = handlers::sms::SMS::new(smsprov, Rc::clone(&botdb), Rc::clone(&mm_client));
+        let sms = handlers::sms::SMS::new(smsprov, Rc::clone(&botdb), mm_client.clone());
         instance.add_post_handler(Box::new(sms));
+    }
+
+    // METEO
+    if let (Ok(cities), Ok(channel)) = (env::var("BOT_METEO_CITIES"), env::var("BOT_METEO_ON_CHANNEL_ID")) {
+        let cities = cities.split(',').map(|p| p.to_string()).collect();
+        println!(
+            "exec meteo in {:?}",
+            taskrunner.add(Arc::new(Meteo::new(cities, mm_client.clone(), &channel)))
+        );
     }
 
     // INSTANCE
     println!("launch bot!");
 
     // RUN FOREVER
-
     let (sender, receiver) = unbounded();
     let wg = WaitGroup::new();
     {
@@ -126,22 +138,13 @@ fn main() -> std::result::Result<(), Box<dyn std::error::Error>> {
         });
     }
 
-    let tr_mm_client = Mattermost::new(cfg.clone())?;
-    let mut tr = SequentialTaskRunner::new();
-    tr.add(Box::new(Tick {}));
-
-    if let (Ok(cities), Ok(channel)) = (env::var("BOT_METEO_CITIES"), env::var("BOT_METEO_ON_CHANNEL_ID")) {
-        let cities = cities.split(',').map(|p| p.to_string()).collect();
-        println!("exec meteo in {:?}", tr.add(Box::new(Meteo::new(cities, tr_mm_client, &channel))));
-    }
-
-    let taskrunner = Arc::new(tr);
+    let taskrunner = Arc::new(taskrunner);
     {
-        let tr = Arc::clone(&taskrunner);
+        let taskrunner = taskrunner.clone();
         let wg = wg.clone();
         thread::spawn(move || {
             println!("launch task runner");
-            tr.run_forever();
+            taskrunner.run_forever();
             println!("task runner returned");
             drop(wg);
         });

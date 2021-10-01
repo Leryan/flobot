@@ -22,11 +22,11 @@ pub struct Blague<R, S, C> {
     match_del: Regex,
     store: Rc<S>,
     remotes: R,
-    client: Rc<C>,
+    client: C,
 }
 
 impl<R, S, C> Blague<R, S, C> {
-    pub fn new(store: Rc<S>, remotes: R, client: Rc<C>) -> Self {
+    pub fn new(store: Rc<S>, remotes: R, client: C) -> Self {
         Blague {
             match_del: Regex::new(r"^!blague del (.*)").expect("cannot compile blague match del regex"),
             store,
@@ -63,6 +63,7 @@ where
         let msg = post.message.as_str();
 
         if msg == "!blague" {
+            println!("asked a joke");
             let blague = self.remotes.random(&post.team_id)?;
             return Ok(self.client.message(post, &blague)?);
         } else if msg == "!blague list" {

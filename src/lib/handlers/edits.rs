@@ -11,7 +11,7 @@ pub struct Edit<C, E> {
     match_del: Regex,
     match_add: Regex,
     match_edit: Regex,
-    client: Rc<C>,
+    client: C,
     db: Rc<E>,
 }
 
@@ -20,7 +20,7 @@ where
     C: client::Sender,
     E: db::Edits,
 {
-    pub fn new(db: Rc<E>, client: Rc<C>) -> Self {
+    pub fn new(db: Rc<E>, client: C) -> Self {
         Self {
             match_list: Regex::new("^!edits list.*$").unwrap(),
             match_del: Regex::new("^!edits del \"(.+)\".*").unwrap(),

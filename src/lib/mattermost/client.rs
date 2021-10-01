@@ -207,6 +207,12 @@ impl Notifier for Mattermost {
         self.post(&post)
     }
 
+    fn required_action(&self, message: &str) -> Result<()> {
+        let mut post = GenericPost::with_message(message);
+        post.channel_id = self.cfg.debug_channel.clone();
+        self.post(&post)
+    }
+
     fn debug(&self, message: &str) -> Result<()> {
         let mut post = GenericPost::with_message(message);
         post.channel_id = self.cfg.debug_channel.clone();

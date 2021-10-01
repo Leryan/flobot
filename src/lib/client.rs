@@ -48,4 +48,5 @@ pub trait Notifier {
     fn startup(&self, message: &str) -> Result<()>;
     fn debug(&self, message: &str) -> Result<()>;
     fn error(&self, message: &str) -> Result<()>;
+    fn required_action(&self, message: &str) -> Result<()>;
 }

@@ -10,6 +10,7 @@ use serde::Deserialize;
 use std::cell::RefCell;
 use std::convert::From;
 use std::rc::Rc;
+use std::sync::Arc;
 
 impl From<crate::db::Error> for super::Error {
     fn from(e: crate::db::Error) -> Self {
@@ -20,20 +21,22 @@ impl From<crate::db::Error> for super::Error {
     }
 }
 
+pub type Remote = Arc<dyn Blague>;
+
 pub struct Select<R> {
-    remotes: Vec<Box<dyn Blague>>,
+    remotes: Vec<Remote>,
     rng: RefCell<R>,
 }
 
 impl<R: rand::Rng> Select<R> {
-    pub fn new(rng: R, remotes: Vec<Box<dyn Blague>>) -> Self {
+    pub fn new(rng: R, remotes: Vec<Remote>) -> Self {
         Self {
             remotes: remotes,
             rng: RefCell::new(rng),
         }
     }
 
-    pub fn push(&mut self, remote: Box<dyn Blague>) {
+    pub fn push(&mut self, remote: Remote) {
         self.remotes.push(remote)
     }
 }

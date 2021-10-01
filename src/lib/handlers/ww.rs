@@ -6,10 +6,9 @@ use crate::werewolf;
 use regex::Regex;
 use std::cell::RefCell;
 use std::convert::From;
-use std::rc::Rc;
 
 pub struct Handler<C> {
-    client: Rc<C>,
+    client: C,
     game: RefCell<werewolf::Game>,
     room_all: RefCell<String>,
     room_ww: RefCell<String>,
@@ -18,7 +17,7 @@ pub struct Handler<C> {
 }
 
 impl<C> Handler<C> {
-    pub fn new(client: Rc<C>) -> Self {
+    pub fn new(client: C) -> Self {
         Handler {
             client: client,
             room_ww: RefCell::new(String::from("")),

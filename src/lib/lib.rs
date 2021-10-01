@@ -9,6 +9,7 @@ pub mod instance;
 pub mod mattermost;
 pub mod middleware;
 pub mod models;
+pub mod pinterest;
 pub mod task;
 pub mod werewolf;
 

@@ -79,7 +79,7 @@ impl SMSSender for Octopush {
 pub struct SMS<S, D, C> {
     provider: S,
     db: Rc<D>,
-    client: Rc<C>,
+    client: C,
     re_register: Regex,
     re_prepare: Regex,
     re_send: Regex,
@@ -88,7 +88,7 @@ pub struct SMS<S, D, C> {
 }
 
 impl<S: SMSSender, D: db::SMS, C: client::Sender> SMS<S, D, C> {
-    pub fn new(provider: S, db: Rc<D>, client: Rc<C>) -> Self {
+    pub fn new(provider: S, db: Rc<D>, client: C) -> Self {
         Self {
             db: db,
             provider: provider,

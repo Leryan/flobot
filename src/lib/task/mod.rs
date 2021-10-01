@@ -3,6 +3,7 @@ use crate::models::GenericPost;
 use chrono::{self, DateTime, Duration as CDuration, Local, Timelike};
 use reqwest::blocking::Client;
 use std::convert::From;
+use std::sync::Arc;
 use std::sync::Mutex;
 use std::{thread, time, time::Duration};
 
@@ -29,7 +30,9 @@ impl From<reqwest::Error> for Error {
     }
 }
 
-type ExecIn = time::Duration;
+pub type ExecIn = time::Duration;
+
+pub type RunnableTask = Arc<dyn Task + Send + Sync>;
 
 /// Task implements work to be done regularly.
 /// The &Duration passed to the task
@@ -38,8 +41,6 @@ pub trait Task {
     fn init_exec(&self, now: Now) -> ExecIn;
     fn exec(&self, now: Now) -> Result<ExecIn, Error>;
 }
-
-type RunnableTask = Box<dyn Task + Send + Sync>;
 
 pub struct SequentialTaskRunner {
     tasks: Vec<RunnableTask>,
