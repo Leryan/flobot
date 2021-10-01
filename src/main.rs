@@ -1,5 +1,5 @@
-use crossbeam::crossbeam_channel::unbounded;
 use crossbeam::sync::WaitGroup;
+use crossbeam_channel::unbounded;
 #[macro_use]
 extern crate diesel_migrations;
 use dotenv;

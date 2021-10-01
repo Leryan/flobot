@@ -1,7 +1,7 @@
 use super::models::MetaEvent;
 use crate::client::EventClient;
 use crate::models::*;
-use crossbeam::crossbeam_channel::Sender as ChannelSender;
+use crossbeam_channel::Sender as ChannelSender;
 use serde_json::json;
 use ws::Result as WSResult;
 use ws::Sender as WSSender;

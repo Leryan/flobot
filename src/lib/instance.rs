@@ -4,7 +4,7 @@ use crate::middleware::Continue;
 use crate::middleware::Error as MiddlewareError;
 use crate::middleware::Middleware;
 use crate::models::{Event, Post, StatusCode, StatusError};
-use crossbeam::crossbeam_channel::{Receiver, RecvTimeoutError};
+use crossbeam_channel::{Receiver, RecvTimeoutError};
 use std::convert::From;
 use std::time::Duration;
 

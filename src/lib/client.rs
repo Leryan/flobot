@@ -1,5 +1,5 @@
 use crate::models::*;
-use crossbeam::crossbeam_channel::Sender as ChannelSender;
+use crossbeam_channel::Sender as ChannelSender;
 use std::fmt::Formatter;
 
 #[derive(Debug)]
