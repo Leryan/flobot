@@ -6,7 +6,7 @@ use crate::models::Post;
 use crate::models::Trigger as MTrigger;
 use regex::escape as escape_re;
 use regex::Regex;
-use std::rc::Rc;
+use std::sync::Arc;
 use std::time::Duration;
 
 pub fn compile_trigger(trigger: &str) -> std::result::Result<Regex, regex::Error> {
@@ -37,7 +37,7 @@ pub fn valid_match(find: &str, message: &str) -> bool {
 }
 
 pub struct Trigger<C, E> {
-    db: Rc<E>,
+    db: Arc<E>,
     client: C,
     match_list: Regex,
     match_del: Regex,
@@ -48,7 +48,7 @@ pub struct Trigger<C, E> {
 }
 
 impl<C, E> Trigger<C, E> {
-    pub fn new(db: Rc<E>, client: C, tempo: Tempo, delay_repeat: Duration) -> Self {
+    pub fn new(db: Arc<E>, client: C, tempo: Tempo, delay_repeat: Duration) -> Self {
         Self {
             db,
             client,
@@ -77,8 +77,8 @@ where
 {
     type Data = Post;
 
-    fn name(&self) -> &str {
-        "trigger"
+    fn name(&self) -> String {
+        "trigger".into()
     }
 
     fn help(&self) -> Option<String> {

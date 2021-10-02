@@ -61,7 +61,8 @@ impl<'de> Deserialize<'de> for Dt {
 /// meaning it's not suitable for large quantities of data: once a key is added, it will be removed
 /// only on lookup.
 ///
-/// Internaly, it uses a standard Arc container so it's safe to use with threads.
+/// Internaly, it uses a standard Arc<Mutex<>> container so it's safe to use with threads by directly clone()-ing
+/// the Tempo db.
 ///
 /// # Example
 ///

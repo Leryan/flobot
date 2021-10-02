@@ -2,10 +2,11 @@ use crate::client;
 use crate::handlers::Handler;
 use crate::middleware::Continue;
 use crate::middleware::Error as MiddlewareError;
-use crate::middleware::Middleware;
+use crate::middleware::Middleware as MMiddleware;
 use crate::models::{Event, Post, StatusCode, StatusError};
 use crossbeam_channel::{Receiver, RecvTimeoutError};
 use std::convert::From;
+
 use std::time::Duration;
 
 #[derive(Debug)]
@@ -43,10 +44,39 @@ impl From<MiddlewareError> for Error {
     }
 }
 
-pub type PostHandler = Box<dyn Handler<Data = Post>>;
+pub type PostHandler = Box<dyn Handler<Data = Post> + Send + Sync>;
+pub type Middleware = Box<dyn MMiddleware + Send + Sync>;
+
+pub struct MutexedPostHandler<PH> {
+    handler: std::sync::Mutex<PH>,
+}
+
+impl<PH> MutexedPostHandler<PH> {
+    pub fn from(ph: PH) -> Self {
+        Self {
+            handler: std::sync::Mutex::new(ph),
+        }
+    }
+}
+
+impl<PH: Handler> Handler for MutexedPostHandler<PH> {
+    type Data = PH::Data;
+
+    fn name(&self) -> String {
+        self.handler.lock().unwrap().name()
+    }
+
+    fn help(&self) -> Option<String> {
+        self.handler.lock().unwrap().help()
+    }
+
+    fn handle(&self, data: &PH::Data) -> crate::handlers::Result {
+        self.handler.lock().unwrap().handle(data)
+    }
+}
 
 pub struct Instance<C> {
-    middlewares: Vec<Box<dyn Middleware>>,
+    middlewares: Vec<Middleware>,
     post_handlers: Vec<PostHandler>,
     helps: std::collections::HashMap<String, String>,
     client: C,
@@ -62,7 +92,7 @@ impl<C: client::Sender + client::Notifier> Instance<C> {
         }
     }
 
-    pub fn add_middleware(&mut self, middleware: Box<dyn Middleware>) -> &mut Self {
+    pub fn add_middleware(&mut self, middleware: Middleware) -> &mut Self {
         self.middlewares.push(middleware);
         self
     }
@@ -78,7 +108,7 @@ impl<C: client::Sender + client::Notifier> Instance<C> {
 
     fn process_middlewares(&mut self, event: Event) -> Result<Option<Event>, Error> {
         let mut event = event;
-        for middleware in self.middlewares.iter_mut() {
+        for middleware in self.middlewares.iter() {
             match middleware.process(event)? {
                 Continue::Yes(nevent) => {
                     event = nevent;
@@ -163,6 +193,7 @@ impl<C: client::Sender + client::Notifier> Instance<C> {
                     status.error.unwrap_or(StatusError::new_none()).message,
                 )),
             },
+            Event::Shutdown => Ok(()), // should not arrive here
         }
     }
 
@@ -188,9 +219,10 @@ impl<C: client::Sender + client::Notifier> Instance<C> {
 
         loop {
             match receiver.recv_timeout(Duration::from_secs(5)) {
-                Ok(e) => {
-                    self.process(e)?;
-                }
+                Ok(e) => match e {
+                    Event::Shutdown => return Ok(()),
+                    _ => self.process(e)?,
+                },
                 Err(rte) => match rte {
                     RecvTimeoutError::Timeout => {}
                     RecvTimeoutError::Disconnected => {

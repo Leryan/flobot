@@ -9,14 +9,14 @@ impl crate::db::Trigger for super::Sqlite {
         return Ok(table::trigger
             .filter(table::team_id.eq(team_id))
             .order(table::triggered_by.asc())
-            .load::<models::Trigger>(&self.db)?);
+            .load::<models::Trigger>(&*self.db.lock().unwrap())?);
     }
 
     fn search(&self, team_id: &str) -> Result<Vec<models::Trigger>> {
         Ok(table::trigger
             .filter(table::team_id.eq(team_id))
             .order_by(table::text_) // emojis first -> all emoji triggers processed first, then text
-            .load::<models::Trigger>(&self.db)?)
+            .load::<models::Trigger>(&*self.db.lock().unwrap())?)
     }
 
     fn add_text(&self, team_id: &str, trigger_: &str, text_: &str) -> Result<()> {
@@ -29,7 +29,7 @@ impl crate::db::Trigger for super::Sqlite {
 
         let _ = diesel::insert_into(table::trigger)
             .values(&new_trigger)
-            .execute(&self.db)?;
+            .execute(&*self.db.lock().unwrap())?;
         Ok(())
     }
 
@@ -43,7 +43,7 @@ impl crate::db::Trigger for super::Sqlite {
 
         let _ = diesel::insert_into(table::trigger)
             .values(&new_trigger)
-            .execute(&self.db)?;
+            .execute(&*self.db.lock().unwrap())?;
         Ok(())
     }
 
@@ -51,7 +51,8 @@ impl crate::db::Trigger for super::Sqlite {
         let filter = table::triggered_by
             .eq(trigger_)
             .and(table::team_id.eq(team_id_));
-        let _ = diesel::delete(table::trigger.filter(filter)).execute(&self.db)?;
+        let _ = diesel::delete(table::trigger.filter(filter))
+            .execute(&*self.db.lock().unwrap())?;
         Ok(())
     }
 }

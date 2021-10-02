@@ -2,7 +2,7 @@ use crate::client;
 use crate::db;
 use crate::handlers::{Handler, Result};
 use crate::models::Post;
-use std::rc::Rc;
+use std::sync::Arc;
 
 use regex::Regex;
 
@@ -12,7 +12,7 @@ pub struct Edit<C, E> {
     match_add: Regex,
     match_edit: Regex,
     client: C,
-    db: Rc<E>,
+    db: Arc<E>,
 }
 
 impl<C, E> Edit<C, E>
@@ -20,7 +20,7 @@ where
     C: client::Sender,
     E: db::Edits,
 {
-    pub fn new(db: Rc<E>, client: C) -> Self {
+    pub fn new(db: Arc<E>, client: C) -> Self {
         Self {
             match_list: Regex::new("^!edits list.*$").unwrap(),
             match_del: Regex::new("^!edits del \"(.+)\".*").unwrap(),
@@ -132,8 +132,8 @@ where
 {
     type Data = Post;
 
-    fn name(&self) -> &str {
-        "edits"
+    fn name(&self) -> String {
+        "edits".into()
     }
     fn help(&self) -> Option<String> {
         Some(

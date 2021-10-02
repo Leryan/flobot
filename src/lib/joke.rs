@@ -2,15 +2,14 @@ use crate::client;
 use crate::db::Joke as DB;
 use crate::handlers::Handler as BotHandler;
 use crate::models::Post;
+use rand::Rng;
 use regex::Regex;
 use reqwest::blocking::Client as RClient;
 use reqwest::header as rh;
 use reqwest::header::HeaderMap as rhm;
 use reqwest::header::HeaderValue as rhv;
 use serde::Deserialize;
-use std::cell::RefCell;
 use std::convert::From;
-use std::rc::Rc;
 use std::sync::Arc;
 
 #[derive(Debug)]
@@ -46,19 +45,15 @@ impl From<crate::db::Error> for Error {
     }
 }
 
-pub type Provider = Arc<dyn Random>;
+pub type Provider = Arc<dyn Random + Send + Sync>;
 
-pub struct SelectProvider<R> {
+pub struct SelectProvider {
     remotes: Vec<Provider>,
-    rng: RefCell<R>,
 }
 
-impl<R: rand::Rng> SelectProvider<R> {
-    pub fn new(rng: R, remotes: Vec<Provider>) -> Self {
-        Self {
-            remotes: remotes,
-            rng: RefCell::new(rng),
-        }
+impl SelectProvider {
+    pub fn new(remotes: Vec<Provider>) -> Self {
+        Self { remotes: remotes }
     }
 
     pub fn push(&mut self, remote: Provider) {
@@ -66,13 +61,10 @@ impl<R: rand::Rng> SelectProvider<R> {
     }
 }
 
-impl<R> Random for SelectProvider<R>
-where
-    R: rand::Rng,
-{
+impl Random for SelectProvider {
     fn random(&self, team_id: &str) -> Result {
         let l = self.remotes.len();
-        let mut remote_n = self.rng.borrow_mut().gen_range(0..l);
+        let mut remote_n = rand::thread_rng().gen_range(0..l);
         for _i in 0..l {
             let res = self
                 .remotes
@@ -91,30 +83,21 @@ where
     }
 }
 
-pub struct ProviderSQLite<R, D>
-where
-    R: rand::Rng,
-{
-    db: Rc<D>,
-    rng: RefCell<R>,
+pub struct ProviderSQLite<D> {
+    db: Arc<D>,
 }
 
-impl<R, D> ProviderSQLite<R, D>
+impl<D> ProviderSQLite<D>
 where
-    R: rand::Rng,
     D: crate::db::Joke,
 {
-    pub fn new(rng: R, db: Rc<D>) -> Self {
-        Self {
-            db,
-            rng: RefCell::new(rng),
-        }
+    pub fn new(db: Arc<D>) -> Self {
+        Self { db }
     }
 }
 
-impl<R, D> Random for ProviderSQLite<R, D>
+impl<D> Random for ProviderSQLite<D>
 where
-    R: rand::Rng,
     D: crate::db::Joke,
 {
     fn random(&self, team_id: &str) -> Result {
@@ -122,9 +105,7 @@ where
         if l < 1 {
             return Err(Error::NoData("no joke in db".to_string()));
         }
-        let blague = self
-            .db
-            .pick(team_id, self.rng.borrow_mut().gen_range(0..l))?;
+        let blague = self.db.pick(team_id, rand::thread_rng().gen_range(0..l))?;
         match blague {
             Some(b) => Ok(b.text),
             None => Err(Error::NoData("cannot find that joke".to_string())),
@@ -255,13 +236,13 @@ impl From<Error> for crate::handlers::Error {
 
 pub struct Handler<R, S, C> {
     match_del: Regex,
-    store: Rc<S>,
+    store: Arc<S>,
     remotes: R,
     client: C,
 }
 
 impl<R, S, C> Handler<R, S, C> {
-    pub fn new(store: Rc<S>, remotes: R, client: C) -> Self {
+    pub fn new(store: Arc<S>, remotes: R, client: C) -> Self {
         Handler {
             match_del: Regex::new(r"^!blague del (.*)")
                 .expect("cannot compile blague match del regex"),
@@ -280,8 +261,8 @@ where
 {
     type Data = Post;
 
-    fn name(&self) -> &str {
-        "blague"
+    fn name(&self) -> String {
+        "blague".into()
     }
     fn help(&self) -> Option<String> {
         Some(

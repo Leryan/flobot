@@ -310,8 +310,8 @@ where
 {
     type Data = Post;
 
-    fn name(&self) -> &str {
-        "werewolf"
+    fn name(&self) -> String {
+        "werewolf".into()
     }
 
     fn help(&self) -> Option<String> {

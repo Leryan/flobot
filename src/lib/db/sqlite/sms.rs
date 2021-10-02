@@ -13,16 +13,17 @@ impl crate::db::SMS for super::Sqlite {
         name: &str,
         number: &str,
     ) -> Result<models::SMSContact> {
-        self.db.transaction::<(), Error, _>(|| {
+        let db = &*self.db.lock().unwrap();
+        db.transaction::<(), Error, _>(|| {
             let res = tc::sms_contact
                 .filter(tc::team_id.eq(team_id).and(tc::name.eq(name)))
-                .first::<models::SMSContact>(&self.db);
+                .first::<models::SMSContact>(db);
 
             match res {
                 Ok(contact) => {
                     diesel::update(tc::sms_contact.filter(tc::id.eq(contact.id)))
                         .set(tc::number.eq(number))
-                        .execute(&self.db)?;
+                        .execute(db)?;
                     Ok(())
                 }
                 Err(diesel::NotFound) => {
@@ -34,7 +35,7 @@ impl crate::db::SMS for super::Sqlite {
                     };
                     diesel::insert_into(tc::sms_contact)
                         .values(&contact)
-                        .execute(&self.db)?;
+                        .execute(db)?;
                     Ok(())
                 }
                 Err(e) => Err(e),
@@ -50,14 +51,14 @@ impl crate::db::SMS for super::Sqlite {
                     .and(tc::number.eq(number))
                     .and(tc::team_id.eq(team_id)),
             )
-            .first(&self.db)?)
+            .first(db)?)
     }
 
     fn list_contacts(&self, team_id: &str) -> Result<Vec<models::SMSContact>> {
         Ok(tc::sms_contact
             .filter(tc::team_id.eq(team_id))
             .order_by(tc::name)
-            .load(&self.db)?)
+            .load(&*self.db.lock().unwrap())?)
     }
 
     fn set_prepare(
@@ -68,7 +69,8 @@ impl crate::db::SMS for super::Sqlite {
         name: &str,
         text: &str,
     ) -> Result<models::SMSPrepare> {
-        self.db.transaction::<_, Error, _>(|| {
+        let db = &*self.db.lock().unwrap();
+        db.transaction::<_, Error, _>(|| {
             let res = tp::sms_prepare
                 .filter(
                     tp::team_id
@@ -76,13 +78,13 @@ impl crate::db::SMS for super::Sqlite {
                         .and(tp::sms_contact_id.eq(contact_id))
                         .and(tp::trigname.eq(trigname)),
                 )
-                .first::<models::SMSPrepare>(&self.db);
+                .first::<models::SMSPrepare>(db);
 
             match res {
                 Ok(prepare) => {
                     diesel::update(tp::sms_prepare.filter(tp::id.eq(prepare.id)))
                         .set((tp::name.eq(name), tp::text.eq(text)))
-                        .execute(&self.db)?;
+                        .execute(db)?;
                     Ok(())
                 }
                 Err(diesel::NotFound) => {
@@ -95,7 +97,7 @@ impl crate::db::SMS for super::Sqlite {
                     };
                     diesel::insert_into(tp::sms_prepare)
                         .values(&prepare)
-                        .execute(&self.db)?;
+                        .execute(db)?;
                     Ok(())
                 }
                 Err(e) => Err(e),
@@ -111,7 +113,7 @@ impl crate::db::SMS for super::Sqlite {
                     .and(tp::sms_contact_id.eq(contact_id))
                     .and(tp::trigname.eq(trigname)),
             )
-            .first(&self.db)?)
+            .first(db)?)
     }
 
     fn list_prepare(
@@ -122,7 +124,7 @@ impl crate::db::SMS for super::Sqlite {
             .filter(tp::team_id.eq(team_id))
             .order_by(tp::trigname)
             .inner_join(tc::sms_contact)
-            .load(&self.db)?;
+            .load(&*self.db.lock().unwrap())?;
         Ok(res)
     }
 
@@ -140,7 +142,7 @@ impl crate::db::SMS for super::Sqlite {
         if let Some(id) = id {
             query = query.filter(tc::id.eq(id));
         }
-        match query.first(&self.db) {
+        match query.first(&*self.db.lock().unwrap()) {
             Ok(contact) => Ok(Some(contact)),
             Err(diesel::NotFound) => Ok(None),
             Err(e) => Err(e.into()),
@@ -154,7 +156,7 @@ impl crate::db::SMS for super::Sqlite {
     ) -> Result<Option<models::SMSPrepare>> {
         match tp::sms_prepare
             .filter(tp::team_id.eq(team_id).and(tp::trigname.eq(trigname)))
-            .first(&self.db)
+            .first(&*self.db.lock().unwrap())
         {
             Ok(prepare) => Ok(Some(prepare)),
             Err(diesel::NotFound) => Ok(None),

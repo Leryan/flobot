@@ -9,7 +9,7 @@ impl crate::db::Joke for super::Sqlite {
         let filter = table::blague
             .filter(table::team_id.eq(team_id))
             .offset(relnum as i64);
-        match filter.first(&self.db) {
+        match filter.first(&*self.db.lock().unwrap()) {
             Ok(b) => Ok(Some(b)),
             Err(e) => match e {
                 diesel::result::Error::NotFound => Ok(None),
@@ -20,7 +20,9 @@ impl crate::db::Joke for super::Sqlite {
 
     fn count(&self, team_id: &str) -> Result<u64> {
         let filter = table::blague.filter(table::team_id.eq(team_id));
-        let res: i64 = filter.select(diesel::dsl::count_star()).first(&self.db)?;
+        let res: i64 = filter
+            .select(diesel::dsl::count_star())
+            .first(&*self.db.lock().unwrap())?;
         Ok(res as u64)
     }
 
@@ -28,13 +30,13 @@ impl crate::db::Joke for super::Sqlite {
         return Ok(table::blague
             .filter(table::team_id.eq(team_id))
             .order_by(table::id.asc())
-            .load::<Blague>(&self.db)?);
+            .load::<Blague>(&*self.db.lock().unwrap())?);
     }
 
     fn del(&self, team_id: &str, id: i32) -> Result<()> {
         let filter =
             table::blague.filter(table::team_id.eq(team_id).and(table::id.eq(id)));
-        let _ = diesel::delete(filter).execute(&self.db)?;
+        let _ = diesel::delete(filter).execute(&*self.db.lock().unwrap())?;
         Ok(())
     }
 
@@ -45,7 +47,7 @@ impl crate::db::Joke for super::Sqlite {
         };
         let _ = diesel::insert_into(table::blague)
             .values(&new_blague)
-            .execute(&self.db)?;
+            .execute(&*self.db.lock().unwrap())?;
         Ok(())
     }
 }

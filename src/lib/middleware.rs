@@ -21,7 +21,7 @@ impl From<client::Error> for Error {
 }
 
 pub trait Middleware {
-    fn process(&mut self, event: Event) -> Result;
+    fn process(&self, event: Event) -> Result;
     fn name(&self) -> &str;
 }
 
@@ -38,7 +38,7 @@ impl Debug {
 }
 
 impl Middleware for Debug {
-    fn process(&mut self, event: Event) -> Result {
+    fn process(&self, event: Event) -> Result {
         println!("middleware {:?} -> {:?}", self.name, event);
         Ok(Continue::Yes(event))
     }
@@ -59,7 +59,7 @@ impl IgnoreSelf {
 }
 
 impl Middleware for IgnoreSelf {
-    fn process(&mut self, event: Event) -> Result {
+    fn process(&self, event: Event) -> Result {
         match event {
             Event::Post(post) => {
                 if post.user_id == self.my_id {

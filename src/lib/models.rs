@@ -5,6 +5,7 @@ pub enum Event {
     Status(Status),
     Unsupported(String),
     PostEdited(PostEdited),
+    Shutdown,
 }
 
 #[derive(Clone, Debug)]

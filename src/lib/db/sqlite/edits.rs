@@ -10,7 +10,7 @@ impl crate::db::Edits for super::Sqlite {
             .filter(table::team_id.eq(team_id))
             .order_by(table::user_id) // user edits first, then team
             .order_by(table::edit)
-            .load::<models::Edit>(&self.db)?);
+            .load::<models::Edit>(&*self.db.lock().unwrap())?);
     }
 
     /// Find the first Edit available, sorted by user_id, then team_id, and matching edit parameter.
@@ -50,7 +50,7 @@ impl crate::db::Edits for super::Sqlite {
                     .and(table::edit.eq(edit.trim())),
             )
             .order_by(table::user_id) // user edits first, then team
-            .first::<models::Edit>(&self.db);
+            .first::<models::Edit>(&*self.db.lock().unwrap());
 
         match res {
             Ok(edit) => Ok(Some(edit)),
@@ -62,7 +62,7 @@ impl crate::db::Edits for super::Sqlite {
     fn del_team(&self, team_id: &str, edit: &str) -> Result<()> {
         let filter =
             table::edits.filter(table::team_id.eq(team_id).and(table::edit.eq(edit)));
-        let _ = diesel::delete(filter).execute(&self.db)?;
+        let _ = diesel::delete(filter).execute(&*self.db.lock().unwrap())?;
         Ok(())
     }
 
@@ -77,7 +77,7 @@ impl crate::db::Edits for super::Sqlite {
 
         let _ = diesel::insert_into(table::edits)
             .values(&edit_)
-            .execute(&self.db)?;
+            .execute(&*self.db.lock().unwrap())?;
         Ok(())
     }
 }

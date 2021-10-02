@@ -1,12 +1,13 @@
 use diesel::SqliteConnection;
+use std::sync::Mutex;
 
 pub struct Sqlite {
-    db: SqliteConnection,
+    db: Mutex<SqliteConnection>,
 }
 
 impl Sqlite {
     pub fn new(db: SqliteConnection) -> Self {
-        Self { db: db }
+        Self { db: Mutex::new(db) }
     }
 }
 

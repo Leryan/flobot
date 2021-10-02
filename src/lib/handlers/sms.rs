@@ -6,7 +6,7 @@ use regex::Regex;
 use reqwest;
 use serde_json::json;
 use std::convert::From;
-use std::rc::Rc;
+use std::sync::Arc;
 
 pub enum SMSError {
     CannotSend(String),
@@ -88,7 +88,7 @@ impl SMSSender for Octopush {
 
 pub struct SMS<S, D, C> {
     provider: S,
-    db: Rc<D>,
+    db: Arc<D>,
     client: C,
     re_register: Regex,
     re_prepare: Regex,
@@ -98,7 +98,7 @@ pub struct SMS<S, D, C> {
 }
 
 impl<S: SMSSender, D: db::SMS, C: client::Sender> SMS<S, D, C> {
-    pub fn new(provider: S, db: Rc<D>, client: C) -> Self {
+    pub fn new(provider: S, db: Arc<D>, client: C) -> Self {
         Self {
             db: db,
             provider: provider,
@@ -118,8 +118,8 @@ impl<S: SMSSender, D: db::SMS, C: client::Sender> SMS<S, D, C> {
 impl<S: SMSSender, D: db::SMS, C: client::Sender> Handler for SMS<S, D, C> {
     type Data = Post;
 
-    fn name(&self) -> &str {
-        "sms"
+    fn name(&self) -> String {
+        "sms".into()
     }
 
     fn help(&self) -> Option<String> {
