@@ -1,6 +1,6 @@
 use crate::models::*;
-use crossbeam_channel::Sender as ChannelSender;
 use std::fmt::Formatter;
+use std::sync::mpsc::Sender as ChannelSender;
 
 #[derive(Debug)]
 pub enum Error {

@@ -1,4 +1,3 @@
-use crossbeam_channel::unbounded;
 #[macro_use]
 extern crate diesel_migrations;
 use dotenv;
@@ -15,6 +14,7 @@ use flobot::task::*;
 use signal_libc::signal;
 use std::env;
 use std::fs;
+use std::sync::mpsc::channel;
 use std::sync::Arc;
 use std::thread;
 use std::time::Duration;
@@ -143,7 +143,7 @@ fn bot() -> std::result::Result<(), Box<dyn std::error::Error>> {
     println!("launch bot!");
 
     // RUN FOREVER
-    let (sender, receiver) = unbounded();
+    let (sender, receiver) = channel();
     let _listener_t = {
         let sender = sender.clone();
         thread::spawn(move || {
@@ -187,7 +187,7 @@ fn bot() -> std::result::Result<(), Box<dyn std::error::Error>> {
 
     let instance_t = {
         thread::spawn(move || {
-            if let Err(e) = instance.run(receiver.clone()) {
+            if let Err(e) = instance.run(receiver) {
                 println!("instance returned with error: {:?}", e);
             }
             println!("instance return without error");
