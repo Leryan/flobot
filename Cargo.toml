@@ -32,5 +32,3 @@ reqwest = { version = "0.11", features = ["blocking", "json", "gzip"] }
 rand = "0.8"
 url = "2.2"
 uuid = { version = "0.8", features = ["v4"] }
-#simple-server = "0"
-#http = "*"

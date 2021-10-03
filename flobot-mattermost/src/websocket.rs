@@ -2,19 +2,19 @@ use super::models::MetaEvent;
 use flobot_lib::models::Event;
 use serde_json::json;
 use std::sync::mpsc::Sender as ChannelSender;
-use ws::Result as WSResult;
-use ws::Sender as WSSender;
-use ws::{connect, CloseCode, Handler, Handshake, Message};
+use ws::{connect, CloseCode, Handler, Handshake, Message, Sender};
+
+type Result = ws::Result<()>;
 
 struct MattermostWS {
-    out: WSSender,
+    out: Sender,
     send: ChannelSender<Event>,
     token: String,
     seq: u64,
 }
 
 impl Handler for MattermostWS {
-    fn on_open(&mut self, _: Handshake) -> WSResult<()> {
+    fn on_open(&mut self, _: Handshake) -> Result {
         self.seq += 1;
         let auth = json!({
             "action": "authentication_challenge",
@@ -30,7 +30,7 @@ impl Handler for MattermostWS {
         res
     }
 
-    fn on_message(&mut self, msg: Message) -> WSResult<()> {
+    fn on_message(&mut self, msg: Message) -> Result {
         let txt = msg.as_text().unwrap();
         let event: MetaEvent = match serde_json::from_str(txt) {
             Ok(v) => v,
@@ -54,7 +54,7 @@ impl super::client::Mattermost {
 
         while retry {
             if let Err(e) = connect(url.clone(), |out| MattermostWS {
-                out: out,
+                out,
                 send: sender.clone(),
                 token: self.cfg.token.clone(),
                 seq: 0,
