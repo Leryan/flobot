@@ -29,7 +29,7 @@ fn make_jokes_provider(botdb: Arc<db::sqlite::Sqlite>) -> joke::SelectProvider {
     joke_remotes.push(Box::new(joke::ProviderBadJokes::new()));
     joke_remotes.push(Box::new(joke::ProviderSQLite::new(botdb)));
     if let Ok(token) = env::var("BOT_BLAGUESAPI_TOKEN") {
-        let blaguesapi = joke::ProviderBlaguesAPI::new(token.as_str());
+        let blaguesapi = joke::ProviderBlaguesAPI::new(&token);
         joke_remotes.push(Box::new(blaguesapi));
     }
 

@@ -64,7 +64,7 @@ impl Channel for Mattermost {
         let channel_name = format!("{}-{}", name, uuid).to_lowercase().clone();
         let mmchannel = CreateChannel {
             team_id: team_id,
-            name: channel_name.as_str(),
+            name: &channel_name,
             display_name: name,
             type_: "P",
         };
@@ -82,7 +82,7 @@ impl Channel for Mattermost {
                 user_id: user_id.clone(),
             };
             self.client
-                .post(&self.url(format!("/channels/{}/members", r.id).as_str()))
+                .post(&self.url(&format!("/channels/{}/members", r.id)))
                 .bearer_auth(&self.cfg.token)
                 .json(&uid)
                 .send()?;
@@ -93,7 +93,7 @@ impl Channel for Mattermost {
 
     fn archive_channel(&self, channel_id: &str) -> Result<()> {
         self.client
-            .delete(&self.url(format!("/channels/{}", channel_id).as_str()))
+            .delete(&self.url(&format!("/channels/{}", channel_id)))
             .bearer_auth(&self.cfg.token)
             .send()?;
 

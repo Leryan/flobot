@@ -100,7 +100,7 @@ A per [channel, trigger] antispam is effective and currently configured at {} se
     }
 
     fn handle(&self, post: &Post) -> Result {
-        let message = post.message.as_str();
+        let message = &post.message;
 
         if !message.starts_with("!trigger ") {
             // check or set a per channel rate limit to avoid spamming in heated discussions.

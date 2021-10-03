@@ -277,7 +277,7 @@ where
     }
 
     fn handle(&self, post: &Post) -> crate::handlers::Result {
-        let msg = post.message.as_str();
+        let msg = &post.message;
 
         if msg == "!blague" {
             let blague = self.remotes.random(&post.team_id)?;
@@ -353,9 +353,9 @@ mod tests {
         let test_token = env::var("BOT_BLAGUESAPI_TOKEN").unwrap();
         let ba = ProviderBlaguesAPI::new(&test_token);
         let r1 = ba.random("tid")?;
-        assert_ne!("", r1.as_str());
+        assert_ne!("", &r1);
         let r2 = ba.random("tid")?;
-        assert_ne!("", r2.as_str());
+        assert_ne!("", &r2);
         assert_ne!(r1, r2);
         Ok(())
     }

@@ -68,8 +68,8 @@ impl SMSSender for Octopush {
         let c = reqwest::blocking::Client::new();
         let r = c
             .post("https://api.octopush.com/v1/public/sms-campaign/send")
-            .header("api-login", self.login.as_str())
-            .header("api-key", self.apikey.as_str())
+            .header("api-login", &self.login)
+            .header("api-key", &self.apikey)
             .json(&sms)
             .send()?;
 
@@ -169,8 +169,8 @@ Exemple :
     }
 
     fn handle(&self, post: &Post) -> Result {
-        let msg = post.message.as_str();
-        let tid = post.team_id.as_str();
+        let msg = &post.message;
+        let tid = &post.team_id;
 
         if !msg.starts_with("!sms ") {
             return Ok(());
@@ -179,31 +179,28 @@ Exemple :
         if self.re_list.is_match(msg) {
             let mut msg = String::from("Contacts :\n\n");
             for c in self.db.list_contacts(tid)?.iter() {
-                msg.push_str(format!("* {} -> `{}`\n", c.id, c.name).as_str());
+                msg.push_str(&format!("* {} -> `{}`\n", c.id, c.name));
             }
             msg.push_str("\nPréparations :\n\n");
             for p in self.db.list_prepare(tid)?.iter() {
-                msg.push_str(
-                    format!(
-                        "{} -> contact {}, `!sms {}` enverra : {}: {}\n",
-                        p.0.id, p.1.name, p.0.trigname, p.0.name, p.0.text
-                    )
-                    .as_str(),
-                );
+                msg.push_str(&format!(
+                    "{} -> contact {}, `!sms {}` enverra : {}: {}\n",
+                    p.0.id, p.1.name, p.0.trigname, p.0.name, p.0.text
+                ));
             }
-            self.client.reply(post, msg.as_str())?;
+            self.client.reply(post, &msg)?;
         } else if let Some(m) = self.re_send.captures(msg) {
-            let trigname = m.get(1).unwrap();
-            let prepare = self.db.get_prepare(tid, trigname.as_str())?;
+            let trigname = m.get(1).unwrap().as_str();
+            let prepare = self.db.get_prepare(tid, trigname)?;
 
             if let Some(prepare) = prepare {
                 let contact =
                     self.db.get_contact(tid, None, Some(&prepare.contact_id))?;
                 if let Some(contact) = contact {
                     if let Err(e) = self.provider.send(
-                        prepare.text.as_str(),
-                        contact.number.as_str(),
-                        prepare.name.as_str(),
+                        &prepare.text,
+                        &contact.number,
+                        &prepare.name,
                     ) {
                         self.client.reaction(post, "no_entry_sign")?;
                         return Err(e.into());
@@ -218,14 +215,13 @@ Exemple :
             let text = m.get(3).unwrap().as_str();
 
             if let Some(contact) = self.db.get_contact(tid, Some(contact_name), None)? {
-                if let Err(e) = self.provider.send(text, contact.number.as_str(), name)
-                {
+                if let Err(e) = self.provider.send(text, &contact.number, name) {
                     self.client.reaction(post, "no_entry_sign")?;
                     return Err(e.into());
                 }
             } else {
                 let msg = format!("Pô trouvé {}", contact_name);
-                self.client.reply(post, msg.as_str())?;
+                self.client.reply(post, &msg)?;
             }
         } else if let Some(m) = self.re_register.captures(msg) {
             let name = m.get(1).unwrap().as_str();
@@ -242,7 +238,7 @@ Exemple :
                     .set_prepare(tid, &contact.id, trigname, name, text)?;
             } else {
                 let msg = format!("Pô trouvé {}", contact_name);
-                self.client.reply(post, msg.as_str())?;
+                self.client.reply(post, &msg)?;
             }
         } else {
             self.client.reply(post, "L'a pô compris.")?;
