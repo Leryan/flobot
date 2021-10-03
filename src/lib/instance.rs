@@ -106,7 +106,7 @@ impl<C: client::Sender + client::Notifier> Instance<C> {
         self
     }
 
-    fn process_middlewares(&mut self, event: Event) -> Result<Option<Event>, Error> {
+    fn process_middlewares(&self, event: Event) -> Result<Option<Event>, Error> {
         let mut event = event;
         for middleware in self.middlewares.iter() {
             match middleware.process(event)? {
@@ -150,9 +150,9 @@ impl<C: client::Sender + client::Notifier> Instance<C> {
         }
     }
 
-    fn process_event_post(&mut self, post: Post) -> Result<(), Error> {
+    fn process_event_post(&self, post: Post) -> Result<(), Error> {
         let _ = self.process_help(&post)?;
-        for handler in self.post_handlers.iter_mut() {
+        for handler in self.post_handlers.iter() {
             let res = handler.handle(&post);
             let _ = match res {
                 Ok(_) => {}
@@ -165,7 +165,7 @@ impl<C: client::Sender + client::Notifier> Instance<C> {
         Ok(())
     }
 
-    fn process_event(&mut self, event: Event) -> Result<(), Error> {
+    fn process_event(&self, event: Event) -> Result<(), Error> {
         match event {
             Event::Post(post) => self.process_event_post(post),
             Event::PostEdited(_edited) => {
@@ -197,7 +197,7 @@ impl<C: client::Sender + client::Notifier> Instance<C> {
         }
     }
 
-    fn process(&mut self, event: Event) -> Result<(), Error> {
+    fn process(&self, event: Event) -> Result<(), Error> {
         let res = self.process_middlewares(event)?;
         match res {
             Some(event) => self.process_event(event),
@@ -205,7 +205,7 @@ impl<C: client::Sender + client::Notifier> Instance<C> {
         }
     }
 
-    pub fn run(&mut self, receiver: Receiver<Event>) -> Result<(), Error> {
+    pub fn run(&self, receiver: Receiver<Event>) -> Result<(), Error> {
         let mut loaded = String::from("## Loaded middlewares\n");
         for m in self.middlewares.iter() {
             loaded.push_str(&format!(" * `{}`\n", m.name()));
