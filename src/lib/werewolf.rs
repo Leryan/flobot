@@ -1,423 +1,328 @@
-use rand::{prelude::SliceRandom, thread_rng};
+use crate::werewolf_game as ww;
+use flobot_lib::client;
+use flobot_lib::handler::{Handler as BotHandler, Result};
+use flobot_lib::models::Post;
+use regex::Regex;
+use std::cell::RefCell;
+use std::convert::From;
 
-#[derive(Clone, Debug, PartialEq)]
-pub enum Role {
-    Werewolf,
-    Villager,
-    Oracle,
+pub struct Handler<C> {
+    client: C,
+    game: RefCell<ww::Game>,
+    room_all: RefCell<String>,
+    room_ww: RefCell<String>,
+    team_id: RefCell<String>,
+    game_owner: RefCell<Option<String>>,
 }
 
-#[derive(Clone, Debug, PartialEq)]
-pub struct Player {
-    pub id: String,
-    pub name: String,
-    pub role: Role,
-    pub alive: bool,
-}
-
-#[derive(PartialEq)]
-pub enum Action {
-    WaitPlayers,
-    Ready,
-    WhoWWKill,
-    WWKill((String, String)), // player id votes to kill player name
-    WhoVillageKill,
-    VillageKill((String, String)), // player id votes to kill player name
-    WhoDead,
-}
-
-#[derive(Debug)]
-pub enum Error {
-    IsDead,
-    IsWerewolf,
-    CannotDoNow,
-    PlayerNotFound,
-    NotEnoughPlayers,
-}
-
-#[derive(Debug, PartialEq)]
-pub enum ActionAnswer {
-    Ok,
-    WaitPlayers,
-    Ready,
-    WhoWWKill(Vec<Player>),
-    WWKill,
-    WhoVillageKill(Vec<Player>),
-    VillageKill(Player),
-    WhoDead(Vec<Player>),
-}
-
-#[derive(Clone, Debug, PartialEq)]
-pub enum Step {
-    None,
-    WaitPlayers,
-    Ready,
-    WerewolfsVoteKill,
-    WerewolfsKill,
-    NewDay,
-    VillageVoteKill,
-    VillageKill,
-    End,
-}
-
-pub struct Game {
-    players: Vec<Player>,
-    step: Step,
-    deads: Vec<Player>,
-}
-
-const MIN_PLAYERS: usize = 4;
-
-impl Game {
-    pub fn new() -> Self {
-        Self {
-            players: vec![],
-            step: Step::None,
-            deads: vec![],
+impl<C> Handler<C> {
+    pub fn new(client: C) -> Self {
+        Handler {
+            client: client,
+            room_ww: RefCell::new(String::from("")),
+            room_all: RefCell::new(String::from("")),
+            team_id: RefCell::new(String::from("")),
+            game_owner: RefCell::new(None),
+            game: RefCell::new(ww::Game::new()),
         }
     }
+}
 
-    pub fn current_step(&self) -> Step {
-        self.step.clone()
+const HELP: &'static str = "Le jeu se déroule en tour par tour.
+
+ * La partie commence à la nuit tombante.
+ * Les loups garous sortent et bouffent quelqu'un.
+ * Le lendemain, le village trouve un cadavre.
+ * Discussions, délibérations, accusations…
+ * Vote ! Avec `!ww vote <name>`
+
+Détails techniques :
+
+ * Les loups garous choisissent leur proie sur leur canal avec `!ww vote <name>`.
+ * Les villageois (loups garous cachés également !) parlent sur le canal `WW-VILLAGE`.
+ * Quand la nuit tombe sur le village, seuls les loups garous peuvent parler.
+ * Il n'est pas interdit de discuter en MP :D
+ * Il est possible d'arrêter le jeu à n'importe quel moment avec `!ww stop_game_now`
+ * Les votes utilisent toujours les *username* et se font comme suit : `!ww vote <username>`
+";
+
+impl<C> Handler<C>
+where
+    C: client::Sender + client::Channel + client::Getter,
+{
+    fn post_all(&self, post: &Post) -> Result {
+        let post = post.nchannel(&self.room_all.borrow());
+        self.client.post(&post)?;
+        Ok(())
     }
 
-    pub fn force_step(&mut self, action: Step) {
-        self.step = action;
+    fn post_ww(&self, post: &Post) -> Result {
+        let post = post.nchannel(&self.room_ww.borrow());
+        self.client.post(&post)?;
+        Ok(())
     }
 
-    pub fn add_player(&mut self, id: &str, username: &str) -> Result<bool, Error> {
-        if self.step != Step::WaitPlayers {
-            return Err(Error::CannotDoNow);
-        }
+    fn re_match(&self, re: &str, txt: &str) -> bool {
+        Regex::new(re).unwrap().is_match(txt)
+    }
 
-        if None == self.get_player(Some(id), Some(username)) {
-            let player = Player {
-                alive: true,
-                role: Role::Villager,
-                id: id.to_string(),
-                name: username.to_string(),
+    fn reset_game(&self) {
+        *self.game_owner.borrow_mut() = None;
+        *self.game.borrow_mut() = ww::Game::new();
+    }
+
+    fn handle_starting_commands(&self, post: &Post, cur: &ww::Step) -> Result {
+        // answer to start, join and list commands
+        if self.re_match(r"!ww[\s]+start.*", &post.message) {
+            match cur {
+                ww::Step::None => {
+                    *self.team_id.borrow_mut() = post.team_id.clone();
+                    *self.game_owner.borrow_mut() = Some(post.user_id.clone());
+                    if self
+                        .game
+                        .borrow_mut()
+                        .process(ww::Action::WaitPlayers)
+                        .is_ok()
+                    {
+                        let users = self.client.users_by_ids(vec![&post.user_id])?;
+                        if self
+                            .game
+                            .borrow_mut()
+                            .add_player(&users[0].id, &users[0].username)
+                            .is_ok()
+                        {
+                            self.client.reaction(&post, "ok_hand")?;
+                            self.client.post(&post.nmessage(
+                                "Une partie de loup-garou va démarrer ! Pour joindre la partie : `!ww join`",
+                            ))?;
+                        }
+                    }
+                }
+                ww::Step::WaitPlayers => {
+                    if let Some(go) = self.game_owner.borrow().clone() {
+                        if go == post.user_id {
+                            let res = self.game.borrow_mut().process(ww::Action::Ready);
+                            if let Ok(_) = res {
+                                let all: Vec<String> = self
+                                    .game
+                                    .borrow()
+                                    .alive_players()
+                                    .iter()
+                                    .filter_map(|p| Some(p.id.clone()))
+                                    .collect();
+                                let ww: Vec<String> = self
+                                    .game
+                                    .borrow()
+                                    .alive_werewolfs()
+                                    .iter()
+                                    .filter_map(|p| Some(p.id.clone()))
+                                    .collect();
+
+                                let rid_all = self.client.create_private(
+                                    &self.team_id.borrow(),
+                                    "WW-VILLAGE",
+                                    &all,
+                                )?;
+                                let rid_ww = self.client.create_private(
+                                    &self.team_id.borrow(),
+                                    "WW-LOUPS",
+                                    &ww,
+                                )?;
+                                *self.room_all.borrow_mut() = rid_all;
+                                *self.room_ww.borrow_mut() = rid_ww;
+                                self.post_all(
+                                    &post.nmessage("### La partie commence !"),
+                                )?;
+                                self.post_all(&post.nmessage(HELP))?;
+                            }
+                        }
+                    }
+                }
+                _ => self.client.reply(post, "Une partie est déjà en cours.")?,
             };
-            self.players.push(player);
-        }
-
-        Ok(self.players.len() >= MIN_PLAYERS)
-    }
-
-    pub fn kill_player(
-        &mut self,
-        id: Option<&str>,
-        name: Option<&str>,
-    ) -> Option<Player> {
-        for p in self.players.iter_mut() {
-            if let Some(id) = id {
-                if p.id == id {
-                    p.alive = false;
-                    return Some(p.clone());
+        } else if self.re_match(r"!ww[\s]+join.*", &post.message) {
+            match cur {
+                ww::Step::WaitPlayers => {
+                    let users = self.client.users_by_ids(vec![&post.user_id])?;
+                    let res = self
+                        .game
+                        .borrow_mut()
+                        .add_player(&users[0].id, &users[0].username);
+                    if res.is_ok() {
+                        self.client.reaction(&post, "ok_hand")?;
+                        if res.unwrap() {
+                            self.client.post(&post.nmessage("La partie peut démarrer. Il est toujours possible de joindre la partie. Quand vous êtes prêts, démarrez avec `!ww start`"))?;
+                        }
+                    }
                 }
-            } else if let Some(name) = name {
-                if p.name == name {
-                    p.alive = false;
-                    return Some(p.clone());
+                _ => self
+                    .client
+                    .reply(post, "Aucune partie joignable pour le moment.")?,
+            };
+        } else if self.re_match(r"!ww[\s]+list.*", &post.message) {
+            match cur {
+                ww::Step::WaitPlayers => {
+                    let mut msg = String::from("Joueurs en attente : ");
+                    for p in self.game.borrow().all_players().iter() {
+                        msg.push_str(&format!("{} ", p.name));
+                    }
+                    self.client.reply(post, &msg)?;
                 }
-            }
-        }
-        None
-    }
-
-    pub fn all_players(&self) -> Vec<Player> {
-        self.players.clone()
-    }
-
-    pub fn alive_players(&self) -> Vec<Player> {
-        self.players
-            .iter()
-            .filter(|p| p.alive)
-            .map(|p| p.clone())
-            .collect()
-    }
-
-    pub fn alive_villagers(&self) -> Vec<Player> {
-        self.players
-            .iter()
-            .filter(|p| p.alive && p.role != Role::Werewolf)
-            .map(|p| p.clone())
-            .collect()
-    }
-
-    pub fn alive_werewolfs(&self) -> Vec<Player> {
-        self.players
-            .iter()
-            .filter(|p| p.alive && p.role == Role::Werewolf)
-            .map(|p| p.clone())
-            .collect()
-    }
-
-    /// get_player by id first, or name second.
-    pub fn get_player(&self, id: Option<&str>, name: Option<&str>) -> Option<Player> {
-        for p in self.players.iter() {
-            if let Some(id) = id {
-                if p.id == id {
-                    return Some(p.clone());
-                }
-            }
-            if let Some(name) = name {
-                if p.name == name {
-                    return Some(p.clone());
-                }
-            }
-        }
-        None
-    }
-
-    pub fn has_role(&self, role: Role) -> bool {
-        for p in self.players.iter() {
-            if p.role == role {
-                return true;
-            }
-        }
-        return false;
-    }
-
-    fn check_step_action(&self, action: &Action, step: &Step) -> Result<(), Error> {
-        let res = match step {
-            Step::None => *action == Action::WaitPlayers,
-            Step::WaitPlayers => *action == Action::Ready,
-            Step::Ready | Step::WerewolfsVoteKill => *action == Action::WhoWWKill,
-            Step::WerewolfsKill => match action {
-                Action::WWKill(_) => true,
-                _ => false,
-            },
-            Step::NewDay => *action == Action::WhoDead,
-            Step::VillageVoteKill => *action == Action::WhoVillageKill,
-            Step::VillageKill => match action {
-                Action::VillageKill(_) => true,
-                _ => false,
-            },
-            Step::End => false,
+                _ => self.client.reply(post, "Aucune partie en attente.")?,
+            };
         };
 
-        if res {
+        Ok(())
+    }
+
+    fn handle_game(&self, post: &Post) -> Result {
+        let cur = self.game.borrow().current_step();
+        self.handle_starting_commands(post, &cur)?;
+
+        let re_vote = Regex::new(r"!ww[\s]+vote[\s]+([\S]+)[\s]*").unwrap();
+
+        loop {
+            println!("WW GAME STEP: {:?}", self.game.borrow().current_step());
+            let step = self.game.borrow().current_step();
+            match step {
+                ww::Step::None | ww::Step::Ready => {}
+                ww::Step::WaitPlayers => break,
+                ww::Step::WerewolfsVoteKill => {
+                    let res = self.game.borrow_mut().process(ww::Action::WhoWWKill);
+                    if let Ok(ww::ActionAnswer::WhoWWKill(players)) = res {
+                        let names = players
+                            .iter()
+                            .map(|p| format!(" * `{}`", p.name))
+                            .collect::<Vec<String>>()
+                            .join("\n");
+                        self.post_all(&post.nmessage(
+                            "### Le soleil se couche, les villageois aussi…",
+                        ))?;
+                        let msg = format!("### Vous avez FAIM !\nChoisissez avec `!ww vote <name>` :\n{}", names);
+                        self.post_ww(&post.nmessage(&msg))?;
+                        break;
+                    }
+                }
+                ww::Step::WerewolfsKill => {
+                    if let Some(captures) = re_vote.captures(&post.message) {
+                        let name = captures.get(1).unwrap().as_str().to_string();
+                        let res = self.game.borrow_mut().process(ww::Action::WWKill((
+                            post.user_id.clone(),
+                            name.clone(),
+                        )));
+                        if let Ok(ww::ActionAnswer::WWKill) = res {
+                            let msg = format!("{} était bien bon…", name);
+                            self.post_ww(&post.nmessage(&msg))?;
+                        } else {
+                            self.client.reply(&post, "pas possible")?;
+                            break;
+                        }
+                    }
+                }
+                ww::Step::NewDay => {
+                    let res = self.game.borrow_mut().process(ww::Action::WhoDead);
+                    if let Ok(ww::ActionAnswer::WhoDead(players)) = res {
+                        let names = players
+                            .iter()
+                            .map(|p| format!(" * `{}` était {:?}", p.name, p.role))
+                            .collect::<Vec<String>>()
+                            .join("\n");
+                        let msg = format!("### Quelqu'un est mort…\n{}", names);
+                        self.post_all(&post.nmessage(&msg))?;
+                    }
+                }
+                ww::Step::VillageVoteKill => {
+                    let res =
+                        self.game.borrow_mut().process(ww::Action::WhoVillageKill);
+                    if let Ok(ww::ActionAnswer::WhoVillageKill(players)) = res {
+                        let names = players
+                            .iter()
+                            .map(|p| format!(" * `{}`", p.name))
+                            .collect::<Vec<String>>()
+                            .join("\n");
+                        let msg = format!(
+                            "### Votez qui selon vous est un loup garou !\n{}",
+                            names
+                        );
+                        self.post_all(&post.nmessage(&msg))?;
+                        break;
+                    }
+                }
+                ww::Step::VillageKill => {
+                    if let Some(captures) = re_vote.captures(&post.message) {
+                        let name = captures.get(1).unwrap().as_str().to_string();
+                        let res =
+                            self.game.borrow_mut().process(ww::Action::VillageKill((
+                                post.user_id.clone(),
+                                name.clone(),
+                            )));
+                        if let Ok(ww::ActionAnswer::VillageKill(player)) = res {
+                            let msg = format!("`{}` était {:?} !", name, player.role);
+                            self.post_all(&post.nmessage(&msg))?;
+                        } else {
+                            self.client.reply(&post, "pas possible")?;
+                            break;
+                        }
+                    }
+                }
+                ww::Step::End => {
+                    let mut msg = String::from("### Fin de partie !\n\n");
+                    if self.game.borrow().alive_villagers().len() == 0 {
+                        msg.push_str("Les loups-garous ont gagnés !");
+                    } else {
+                        msg.push_str("Les villageois ont gagnés !");
+                    }
+                    msg.push_str("\n\n**Pensez à archiver le canal :)**");
+
+                    self.reset_game();
+
+                    let _ = self.client.archive(&self.room_ww.borrow());
+
+                    self.post_all(&post.nmessage(&msg))?;
+                    break;
+                }
+            };
+        }
+
+        Ok(())
+    }
+}
+
+impl<C> BotHandler for Handler<C>
+where
+    C: client::Sender + client::Channel + client::Getter,
+{
+    type Data = Post;
+
+    fn name(&self) -> String {
+        "werewolf".into()
+    }
+
+    fn help(&self) -> Option<String> {
+        Some(
+            "### Jeu du loup garou
+
+ * Commencer une partie avec `!ww start`
+ * Joindre une partie annoncée avec `!ww join`
+ * Quand le bot annonce que la partie peut être lancée, suivre les instructions :)
+"
+            .to_string(),
+        )
+    }
+
+    fn handle(&self, post: &Post) -> Result {
+        let message = &post.message;
+
+        if !message.starts_with("!ww ") {
             return Ok(());
         }
 
-        Err(Error::CannotDoNow)
-    }
-
-    fn check_endgame_or(&self, step: Step) -> Step {
-        if self.alive_werewolfs().len() == 0 || self.alive_villagers().len() == 0 {
-            return Step::End;
+        if message.starts_with("!ww stop_game_now") {
+            self.reset_game();
+            self.client.reply(post, "Jeu arrêté.")?;
         } else {
-            step
+            self.handle_game(post)?;
         }
-    }
-
-    pub fn process(&mut self, action: Action) -> Result<ActionAnswer, Error> {
-        self.check_step_action(&action, &self.step)?;
-
-        match action {
-            Action::WaitPlayers => {
-                self.step = Step::WaitPlayers;
-                Ok(ActionAnswer::Ok)
-            }
-            Action::Ready => {
-                let mut rng = thread_rng();
-                self.players.shuffle(&mut rng);
-                let tot = self.players.len();
-                if tot < MIN_PLAYERS {
-                    return Err(Error::NotEnoughPlayers);
-                }
-
-                if tot <= MIN_PLAYERS + 2 {
-                    self.players[0].role = Role::Werewolf;
-                    self.players[1].role = Role::Werewolf;
-                }
-
-                if tot > MIN_PLAYERS + 2 {
-                    self.players[2].role = Role::Werewolf;
-                }
-
-                self.step = Step::WerewolfsVoteKill;
-                Ok(ActionAnswer::Ok)
-            }
-            Action::WhoWWKill => {
-                self.step = Step::WerewolfsKill;
-                Ok(ActionAnswer::WhoWWKill(self.alive_villagers()))
-            }
-            Action::WWKill((player, name)) => {
-                if let Some(_) = self
-                    .players
-                    .iter()
-                    .filter(|p| p.name == name && p.alive && p.role != Role::Werewolf)
-                    .next()
-                {
-                    if self
-                        .players
-                        .iter()
-                        .filter(|p| {
-                            p.id == player && p.role == Role::Werewolf && p.alive
-                        })
-                        .count()
-                        > 0
-                    {
-                        let player = self.kill_player(None, Some(&name)).unwrap();
-                        self.deads.push(player);
-                        self.step = self.check_endgame_or(Step::NewDay);
-                        return Ok(ActionAnswer::WWKill);
-                    } else {
-                        return Err(Error::CannotDoNow);
-                    }
-                }
-                return Err(Error::PlayerNotFound);
-            }
-            Action::WhoVillageKill => {
-                self.step = Step::VillageKill;
-                Ok(ActionAnswer::WhoVillageKill(self.alive_players()))
-            }
-            Action::VillageKill((player, name)) => {
-                if let Some(_) = self
-                    .players
-                    .iter()
-                    .filter(|p| p.name == name && p.alive)
-                    .next()
-                {
-                    if self
-                        .players
-                        .iter()
-                        .filter(|p| p.id == player && p.alive)
-                        .count()
-                        > 0
-                    {
-                        let player = self.kill_player(None, Some(&name)).unwrap();
-                        self.deads.push(player.clone());
-                        self.step = self.check_endgame_or(Step::WerewolfsVoteKill);
-                        return Ok(ActionAnswer::VillageKill(player));
-                    } else {
-                        return Err(Error::CannotDoNow);
-                    }
-                }
-                return Err(Error::PlayerNotFound);
-            }
-            Action::WhoDead => {
-                let res = Ok(ActionAnswer::WhoDead(self.deads.clone()));
-                self.deads.clear();
-                self.step = self.check_endgame_or(Step::VillageVoteKill);
-                res
-            }
-        }
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn regular_scenario() -> Result<(), Error> {
-        let mut game = Game::new();
-        // try add player before moving to WaitPlayers
-        let res = game.add_player("0", "zero");
-        assert!(matches!(res, Err(Error::CannotDoNow)));
-
-        let res = game.process(Action::WaitPlayers);
-        assert!(res.is_ok());
-        assert_eq!(Step::WaitPlayers, game.step);
-        // add players. for as long as the game is not started, everything is cool.
-        assert!(game.add_player("1", "one").is_ok());
-        assert!(game.add_player("2", "two").is_ok());
-        assert!(game.add_player("3", "three").is_ok());
-
-        assert_eq!(game.step, Step::WaitPlayers);
-        let res = game.process(Action::Ready);
-        assert!(res.is_err());
-        assert!(matches!(res, Err(Error::NotEnoughPlayers)));
-        assert_eq!(game.step, Step::WaitPlayers);
-
-        assert!(game.add_player("4", "four").is_ok());
-
-        // start the game.
-        let res = game.process(Action::Ready)?;
-        assert_eq!(ActionAnswer::Ok, res);
-        // asking werewolfs who they want to kill
-        assert_eq!(game.step, Step::WerewolfsVoteKill);
-        let res = game.process(Action::WhoWWKill)?;
-        if let ActionAnswer::WhoWWKill(players) = res {
-            assert_eq!(players.len(), 2);
-            assert_eq!(
-                players.iter().filter(|p| p.role != Role::Werewolf).count(),
-                players.len()
-            );
-            let wwid = game.alive_werewolfs()[0].id.clone();
-
-            let killp = players[0].clone();
-            assert_eq!(true, killp.alive);
-            let res = game.process(Action::WWKill((wwid, killp.name.clone())))?;
-
-            assert_eq!(res, ActionAnswer::WWKill);
-            assert_eq!(game.step, Step::NewDay);
-
-            let res = game.process(Action::WhoDead)?;
-
-            if let ActionAnswer::WhoDead(players) = res {
-                assert_eq!(players.len(), 1);
-                assert_eq!(players[0].id, killp.id);
-                assert_eq!(players[0].name, killp.name);
-                assert_eq!(false, players[0].alive);
-            } else {
-                assert!(false, "expected WhoDead");
-            }
-            assert_eq!(game.step, Step::VillageVoteKill);
-            let res = game.process(Action::WhoVillageKill)?;
-            if let ActionAnswer::WhoVillageKill(players) = res {
-                assert_eq!(
-                    players.iter().filter(|p| p.role == Role::Werewolf).count(),
-                    2
-                );
-                assert_eq!(players.len(), 3);
-
-                let villager = players
-                    .iter()
-                    .filter(|p| p.role == Role::Werewolf)
-                    .next()
-                    .unwrap();
-                let viid = game.alive_players()[0].id.clone();
-                let res =
-                    game.process(Action::VillageKill((viid, villager.name.clone())))?;
-
-                if let ActionAnswer::VillageKill(villager) = res {
-                    assert_eq!(false, villager.alive);
-                    assert_eq!(Role::Werewolf, villager.role);
-                    assert_eq!(Step::WerewolfsVoteKill, game.step);
-
-                    let res = game.process(Action::WhoWWKill)?;
-                    if let ActionAnswer::WhoWWKill(players) = res {
-                        assert_eq!(
-                            players.iter().filter(|p| p.role != Role::Werewolf).count(),
-                            1
-                        );
-                        assert_eq!(players.len(), 1);
-                        assert_eq!(Step::WerewolfsKill, game.step);
-
-                        let villager = players[0].clone();
-                        let wwid = game.alive_werewolfs()[0].id.clone();
-                        let res = game
-                            .process(Action::WWKill((wwid, villager.name.clone())))?;
-
-                        assert_eq!(ActionAnswer::WWKill, res);
-                        assert_eq!(Step::End, game.step);
-                    } else {
-                        assert!(false, "expected WhoWWKill");
-                    }
-                } else {
-                    assert!(false, "expected VillageKill");
-                }
-            } else {
-                assert!(false, "expected WhoVillageKill");
-            }
-        } else {
-            assert!(false, "expected WhoWWKill");
-        }
-
-        // ww vote
 
         Ok(())
     }

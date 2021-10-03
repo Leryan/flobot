@@ -1,5 +1,5 @@
 use crate::client;
-use crate::handler::{Handler, Result as HandlerResult};
+use crate::handler::Handler;
 use crate::middleware::Continue;
 use crate::middleware::Error as MiddlewareError;
 use crate::middleware::Middleware as MMiddleware;
@@ -45,34 +45,6 @@ impl From<MiddlewareError> for Error {
 
 pub type PostHandler = Box<dyn Handler<Data = Post> + Send + Sync>;
 pub type Middleware = Box<dyn MMiddleware + Send + Sync>;
-
-pub struct MutexedPostHandler<PH> {
-    handler: std::sync::Mutex<PH>,
-}
-
-impl<PH> MutexedPostHandler<PH> {
-    pub fn from(ph: PH) -> Self {
-        Self {
-            handler: std::sync::Mutex::new(ph),
-        }
-    }
-}
-
-impl<PH: Handler> Handler for MutexedPostHandler<PH> {
-    type Data = PH::Data;
-
-    fn name(&self) -> String {
-        self.handler.lock().unwrap().name()
-    }
-
-    fn help(&self) -> Option<String> {
-        self.handler.lock().unwrap().help()
-    }
-
-    fn handle(&self, data: &PH::Data) -> HandlerResult {
-        self.handler.lock().unwrap().handle(data)
-    }
-}
 
 pub struct Instance<C> {
     middlewares: Vec<Middleware>,

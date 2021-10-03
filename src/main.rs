@@ -2,15 +2,16 @@
 extern crate diesel_migrations;
 use dotenv;
 use flobot::db;
-use flobot::handlers::{
-    edits::Edit as HandlerEdit, sms, trigger::Trigger as HandlerTrigger,
-    ww::Handler as HandlerWW,
-};
 use flobot::joke;
 use flobot::weather::Meteo;
+use flobot::{
+    edits::Edit as HandlerEdit, sms, trigger::Trigger as HandlerTrigger,
+    werewolf::Handler as HandlerWW,
+};
 use flobot_lib::client::Getter;
 use flobot_lib::conf::Conf;
-use flobot_lib::instance::{Instance, MutexedPostHandler};
+use flobot_lib::handler::MutexedHandler;
+use flobot_lib::instance::Instance;
 use flobot_lib::middleware;
 use flobot_lib::models::Event;
 use flobot_lib::task::*;
@@ -120,11 +121,11 @@ fn bot() -> std::result::Result<(), Box<dyn std::error::Error>> {
         make_jokes_provider(botdb.clone()),
         mm_client.clone(),
     );
-    instance.add_post_handler(Box::new(MutexedPostHandler::from(handler_joke)));
+    instance.add_post_handler(Box::new(MutexedHandler::from(handler_joke)));
 
     // WEREWOLF GAME
     let ww = HandlerWW::new(mm_client.clone());
-    instance.add_post_handler(Box::new(MutexedPostHandler::from(ww)));
+    instance.add_post_handler(Box::new(MutexedHandler::from(ww)));
 
     // SMS
     if let (Ok(login), Ok(apikey)) = (

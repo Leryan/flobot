@@ -61,3 +61,35 @@ impl Handler for Debug {
         Ok(())
     }
 }
+
+/// Protect a handler behind a standard mutex. This makes
+/// memory sharing easier by calling lock() for each method
+/// of an implementation. You can then wrap the resulting
+/// implementation behind an Arc<>.
+pub struct MutexedHandler<PH> {
+    handler: std::sync::Mutex<PH>,
+}
+
+impl<PH> From<PH> for MutexedHandler<PH> {
+    fn from(ph: PH) -> Self {
+        Self {
+            handler: std::sync::Mutex::new(ph),
+        }
+    }
+}
+
+impl<PH: Handler> Handler for MutexedHandler<PH> {
+    type Data = PH::Data;
+
+    fn name(&self) -> String {
+        self.handler.lock().unwrap().name()
+    }
+
+    fn help(&self) -> Option<String> {
+        self.handler.lock().unwrap().help()
+    }
+
+    fn handle(&self, data: &PH::Data) -> Result {
+        self.handler.lock().unwrap().handle(data)
+    }
+}
