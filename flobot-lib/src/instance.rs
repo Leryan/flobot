@@ -6,9 +6,7 @@ use crate::middleware::Middleware as MMiddleware;
 use crate::models::{Event, Post, StatusCode, StatusError};
 use regex::Regex;
 use std::convert::From;
-use std::sync::mpsc::{Receiver, RecvTimeoutError};
-
-use std::time::Duration;
+use std::sync::mpsc::Receiver;
 
 #[derive(Debug)]
 pub enum Error {
@@ -107,20 +105,15 @@ impl<C: client::Sender + client::Notifier> Instance<C> {
         self
     }
 
-    fn process_middlewares(&self, event: Event) -> Result<Option<Event>, Error> {
-        let mut event = event;
+    fn process_middlewares(&self, event: &mut Event) -> Result<Continue, Error> {
         for middleware in self.middlewares.iter() {
             match middleware.process(event)? {
-                Continue::Yes(nevent) => {
-                    event = nevent;
-                }
-                Continue::No => {
-                    return Ok(None);
-                }
+                Continue::Yes => {}
+                Continue::No => return Ok(Continue::No),
             };
         }
 
-        Ok(Some(event))
+        Ok(Continue::Yes)
     }
 
     fn process_help(&self, post: &Post) -> Result<(), Error> {
@@ -151,10 +144,10 @@ impl<C: client::Sender + client::Notifier> Instance<C> {
         }
     }
 
-    fn process_event_post(&self, post: Post) -> Result<(), Error> {
-        let _ = self.process_help(&post)?;
+    fn process_event_post(&self, post: &Post) -> Result<(), Error> {
+        let _ = self.process_help(post)?;
         for handler in self.post_handlers.iter() {
-            let res = handler.handle(&post);
+            let res = handler.handle(post);
             let _ = match res {
                 Ok(_) => {}
                 Err(e) => match self.client.debug(&format!("error: {:?}", e)) {
@@ -166,7 +159,7 @@ impl<C: client::Sender + client::Notifier> Instance<C> {
         Ok(())
     }
 
-    fn process_event(&self, event: Event) -> Result<(), Error> {
+    fn process_event(&self, event: &Event) -> Result<(), Error> {
         match event {
             Event::Post(post) => self.process_event_post(post),
             Event::PostEdited(_edited) => {
@@ -184,25 +177,35 @@ impl<C: client::Sender + client::Notifier> Instance<C> {
             Event::Status(status) => match status.code {
                 StatusCode::OK => Ok(()),
                 StatusCode::Error => Err(Error::Status(
-                    status.error.unwrap_or(StatusError::new_none()).message,
+                    status
+                        .error
+                        .as_ref()
+                        .unwrap_or(&StatusError::new_none())
+                        .message
+                        .clone(),
                 )),
                 StatusCode::Unsupported => {
                     println!("unsupported: {:?}", status);
                     Ok(())
                 }
                 StatusCode::Unknown => Err(Error::Other(
-                    status.error.unwrap_or(StatusError::new_none()).message,
+                    status
+                        .error
+                        .as_ref()
+                        .unwrap_or(&StatusError::new_none())
+                        .message
+                        .clone(),
                 )),
             },
             Event::Shutdown => Ok(()), // should not arrive here
         }
     }
 
-    fn process(&self, event: Event) -> Result<(), Error> {
+    fn process(&self, event: &mut Event) -> Result<(), Error> {
         let res = self.process_middlewares(event)?;
         match res {
-            Some(event) => self.process_event(event),
-            None => Ok(()),
+            Continue::Yes => self.process_event(event),
+            Continue::No => Ok(()),
         }
     }
 
@@ -219,19 +222,17 @@ impl<C: client::Sender + client::Notifier> Instance<C> {
         let _ = self.client.startup(&loaded)?;
 
         loop {
-            match receiver.recv_timeout(Duration::from_secs(5)) {
-                Ok(e) => match e {
+            match receiver.recv() {
+                Ok(mut event) => match event {
                     Event::Shutdown => return Ok(()),
-                    _ => self.process(e)?,
+                    _ => self.process(&mut event)?,
                 },
-                Err(rte) => match rte {
-                    RecvTimeoutError::Timeout => {}
-                    RecvTimeoutError::Disconnected => {
-                        return Err(Error::Consumer(format!(
-                            "receiving channel closed"
-                        )));
-                    }
-                },
+                Err(rte) => {
+                    return Err(Error::Consumer(format!(
+                        "receiving channel error: {}",
+                        rte.to_string()
+                    )))
+                }
             };
         }
     }

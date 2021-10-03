@@ -9,7 +9,7 @@ pub enum Error {
 
 pub enum Continue {
     No,
-    Yes(Event),
+    Yes,
 }
 
 type Result = std::result::Result<Continue, Error>;
@@ -21,7 +21,7 @@ impl From<client::Error> for Error {
 }
 
 pub trait Middleware {
-    fn process(&self, event: Event) -> Result;
+    fn process(&self, event: &mut Event) -> Result;
     fn name(&self) -> &str;
 }
 
@@ -38,9 +38,9 @@ impl Debug {
 }
 
 impl Middleware for Debug {
-    fn process(&self, event: Event) -> Result {
+    fn process(&self, event: &mut Event) -> Result {
         println!("middleware {:?} -> {:?}", self.name, event);
-        Ok(Continue::Yes(event))
+        Ok(Continue::Yes)
     }
 
     fn name(&self) -> &str {
@@ -59,16 +59,16 @@ impl IgnoreSelf {
 }
 
 impl Middleware for IgnoreSelf {
-    fn process(&self, event: Event) -> Result {
+    fn process(&self, event: &mut Event) -> Result {
         match event {
             Event::Post(post) => {
                 if post.user_id == self.my_id {
                     Ok(Continue::No)
                 } else {
-                    Ok(Continue::Yes(Event::Post(post)))
+                    Ok(Continue::Yes)
                 }
             }
-            _ => Ok(Continue::Yes(event)),
+            _ => Ok(Continue::Yes),
         }
     }
 
