@@ -20,6 +20,8 @@ impl From<client::Error> for Error {
     }
 }
 
+/// A Middleware can be used to modify the content of an event.
+/// They are executed before any post handler.
 pub trait Middleware {
     fn process(&self, event: &mut Event) -> Result;
     fn name(&self) -> &str;
@@ -48,6 +50,9 @@ impl Middleware for Debug {
     }
 }
 
+/// IgnoreSelf should always be used in order to avoid
+/// infinite loops in the bot. For example, triggering automatic
+/// answers from the bot that would trigger another answer and so on…
 pub struct IgnoreSelf {
     my_id: String,
 }

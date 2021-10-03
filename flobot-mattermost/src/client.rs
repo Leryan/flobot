@@ -1,5 +1,5 @@
 use super::models::*;
-use flobot_lib::client::{Channel, Getter, Notifier, Result, Sender};
+use flobot_lib::client::{Channel, Editor, Getter, Notifier, Result, Sender};
 use flobot_lib::conf::Conf;
 use flobot_lib::models as gm;
 use uuid::Uuid;
@@ -73,7 +73,7 @@ impl Channel for Mattermost {
         Ok(r.id)
     }
 
-    fn archive_channel(&self, channel_id: &str) -> Result<()> {
+    fn archive(&self, channel_id: &str) -> Result<()> {
         self.client
             .delete(&self.url(&format!("/channels/{}", channel_id)))
             .bearer_auth(&self.cfg.token)
@@ -103,10 +103,6 @@ impl Sender for Mattermost {
             .json(&mmpost)
             .send()?;
         Ok(())
-    }
-
-    fn message(&self, post: &gm::Post, message: &str) -> Result<()> {
-        self.post(&post.nmessage(message))
     }
 
     fn reaction(&self, post: &gm::Post, reaction: &str) -> Result<()> {
@@ -143,15 +139,17 @@ impl Sender for Mattermost {
             .send()?;
         Ok(())
     }
+}
 
-    fn edit(&self, post_id: &str, message: &str) -> Result<()> {
+impl Editor for Mattermost {
+    fn edit(&self, post: &gm::Post, message: &str) -> Result<()> {
         let edit = PostEdit {
             message: Some(message),
             file_ids: None,
         };
 
         self.client
-            .put(&self.url(&format!("/posts/{}/patch", post_id)))
+            .put(&self.url(&format!("/posts/{}/patch", post.id)))
             .bearer_auth(&self.cfg.token)
             .json(&edit)
             .send()?;

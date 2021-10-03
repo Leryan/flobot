@@ -17,7 +17,7 @@ pub struct Edit<C, E> {
 
 impl<C, E> Edit<C, E>
 where
-    C: client::Sender,
+    C: client::Editor + client::Sender,
     E: db::Edits,
 {
     pub fn new(db: Arc<E>, client: C) -> Self {
@@ -37,8 +37,7 @@ where
         match res {
             Some(edit) => {
                 if edit.replace_with_text.is_some() {
-                    self.client
-                        .edit(&post.id, &edit.replace_with_text.unwrap())?;
+                    self.client.edit(&post, &edit.replace_with_text.unwrap())?;
                 } else if edit.replace_with_file.is_some() {
                     // unimplemented
                 }
@@ -127,7 +126,7 @@ where
 
 impl<C, E> Handler for Edit<C, E>
 where
-    C: client::Sender,
+    C: client::Sender + client::Editor,
     E: db::Edits,
 {
     type Data = Post;

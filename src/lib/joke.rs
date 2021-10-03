@@ -277,7 +277,7 @@ where
 
         if msg == "!blague" {
             let blague = self.remotes.random(&post.team_id)?;
-            return Ok(self.client.message(post, &blague)?);
+            return Ok(self.client.post(&post.nmessage(&blague))?);
         } else if msg == "!blague list" {
             let blagues = self.store.list(&post.team_id)?;
             let mut rep =
@@ -286,7 +286,7 @@ where
                 rep.push_str(&format!(" * {}: {}\n", blague.id, &blague.text));
             }
 
-            return Ok(self.client.message(post, &rep)?);
+            return Ok(self.client.post(&post.nmessage(&rep))?);
         }
 
         match self.match_del.captures(msg) {

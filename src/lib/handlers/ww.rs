@@ -282,7 +282,7 @@ where
 
                     self.reset_game();
 
-                    let _ = self.client.archive_channel(&self.room_ww.borrow());
+                    let _ = self.client.archive(&self.room_ww.borrow());
 
                     self.post_all(&post.nmessage(&msg))?;
                     break;

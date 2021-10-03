@@ -84,8 +84,8 @@ pub struct Instance<C> {
 impl<C: client::Sender + client::Notifier> Instance<C> {
     pub fn new(client: C) -> Self {
         Instance {
-            middlewares: Vec::new(),
-            post_handlers: Vec::new(),
+            middlewares: vec![],
+            post_handlers: vec![],
             helps: std::collections::HashMap::new(),
             client,
         }

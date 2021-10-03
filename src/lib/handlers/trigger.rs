@@ -90,14 +90,14 @@ impl<C: client::Sender, E> Trigger<C, E> {
             }
 
             if count == 20 {
-                self.client.message(from, &l)?;
+                self.client.post(&from.nmessage(&l))?;
                 count = 0;
                 l = String::new();
             }
         }
 
         if count > 0 {
-            self.client.message(from, &l)?;
+            self.client.post(&from.nmessage(&l))?;
         }
 
         Ok(())

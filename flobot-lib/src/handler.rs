@@ -8,8 +8,6 @@ pub enum Error {
     Timeout(String),
     Status(String),
     Other(String),
-    Reaction(String),
-    Reply(String),
 }
 
 impl From<client::Error> for Error {
@@ -25,6 +23,9 @@ impl From<client::Error> for Error {
 
 pub type Result = std::result::Result<(), Error>;
 
+/// Handle events after they have been through middleware.
+/// Although Data suggest it is possible to support different types of
+/// event, only Post are supported currently.
 pub trait Handler {
     type Data;
     fn name(&self) -> String;
@@ -32,6 +33,7 @@ pub trait Handler {
     fn handle(&self, data: &Self::Data) -> Result;
 }
 
+/// DO NOT USE IN PRODUCTION: Debug handler will PRINT ALL MESSAGES.
 pub struct Debug {
     name: String,
 }
@@ -55,7 +57,7 @@ impl Handler for Debug {
     }
 
     fn handle(&self, post: &Post) -> Result {
-        println!("handler {:?} -> {:?}", self.name, post);
+        println!("debug handler {:?} -> {:?}", self.name, post);
         Ok(())
     }
 }

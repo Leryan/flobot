@@ -19,6 +19,8 @@ impl From<reqwest::Error> for Error {
     }
 }
 
+/// Error for HTTP/WebSocket clients. Automatic conversion is implemented for
+/// the reqwest::Error type.
 #[derive(Debug)]
 pub enum Error {
     Status(u64),
@@ -37,23 +39,28 @@ impl std::fmt::Display for Error {
 
 pub type Result<T> = std::result::Result<T, Error>;
 
+/// Send something to the backend.
 pub trait Sender {
     fn post(&self, post: &Post) -> Result<()>;
     fn reaction(&self, post: &Post, reaction: &str) -> Result<()>;
     fn reply(&self, post: &Post, message: &str) -> Result<()>;
-    fn message(&self, from: &Post, message: &str) -> Result<()>;
-    fn edit(&self, post_id: &str, message: &str) -> Result<()>;
+}
+
+pub trait Editor {
+    /// edit an existing post so it contains message instead.
+    fn edit(&self, post: &Post, message: &str) -> Result<()>;
 }
 
 pub trait Channel {
-    // create_private returns the room id to be used as channel_id in a GenericPost
+    /// Creates a private channel and returns the room id to be used as channel_id in a GenericPost
     fn create_private(
         &self,
         team_id: &str,
         name: &str,
         users: &Vec<String>,
     ) -> Result<String>;
-    fn archive_channel(&self, channel_id: &str) -> Result<()>;
+    /// Archive given channel.
+    fn archive(&self, channel_id: &str) -> Result<()>;
 }
 
 pub trait Getter {
@@ -61,6 +68,8 @@ pub trait Getter {
     fn users_by_ids(&self, ids: Vec<&str>) -> Result<Vec<User>>;
 }
 
+/// A Notifier implementation should only send messages to the debugging channel.
+/// See conf::Conf.
 pub trait Notifier {
     fn startup(&self, message: &str) -> Result<()>;
     fn debug(&self, message: &str) -> Result<()>;
