@@ -45,7 +45,7 @@ impl From<crate::db::Error> for Error {
     }
 }
 
-pub type Provider = Arc<dyn Random + Send + Sync>;
+pub type Provider = Box<dyn Random + Send + Sync>;
 
 pub struct SelectProvider {
     remotes: Vec<Provider>,
@@ -280,7 +280,6 @@ where
         let msg = post.message.as_str();
 
         if msg == "!blague" {
-            println!("asked a joke");
             let blague = self.remotes.random(&post.team_id)?;
             return Ok(self.client.message(post, &blague)?);
         } else if msg == "!blague list" {
