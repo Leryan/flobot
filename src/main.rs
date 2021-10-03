@@ -1,21 +1,21 @@
 #[macro_use]
 extern crate diesel_migrations;
 use dotenv;
-use flobot::conf::Conf;
 use flobot::db;
 use flobot::handlers::{
     edits::Edit as HandlerEdit, sms, trigger::Trigger as HandlerTrigger,
     ww::Handler as HandlerWW,
 };
 use flobot::joke;
-use flobot::mattermost::client::Mattermost;
 use flobot::weather::Meteo;
 use flobot_lib::client::Getter;
+use flobot_lib::conf::Conf;
 use flobot_lib::instance::{Instance, MutexedPostHandler};
 use flobot_lib::middleware;
 use flobot_lib::models::Event;
 use flobot_lib::task::*;
 use flobot_lib::tempo::Tempo;
+use flobot_mattermost::client::Mattermost;
 use signal_libc::signal::{self, Signal};
 use std::env;
 use std::fs;
@@ -52,7 +52,7 @@ fn make_jokes_provider(botdb: Arc<db::sqlite::Sqlite>) -> joke::SelectProvider {
 }
 
 fn bot() -> std::result::Result<(), Box<dyn std::error::Error>> {
-    println!("Launch version {}", flobot::BUILD_GIT_HASH);
+    println!("Launch version {}", flobot_lib::BUILD_GIT_HASH);
     let cli_args: Vec<String> = env::args().collect();
     let mut flag_debug = false;
     println!("Launched with command line arguments: {:?}", cli_args);

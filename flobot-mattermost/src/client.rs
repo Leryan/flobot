@@ -1,7 +1,6 @@
 use super::models::*;
-use crate::conf::Conf;
-use crate::db::models::Trigger;
 use flobot_lib::client::{Channel, Getter, Notifier, Result, Sender};
+use flobot_lib::conf::Conf;
 use flobot_lib::models as gm;
 use uuid::Uuid;
 
@@ -32,42 +31,6 @@ impl Mattermost {
         let mut url = self.cfg.api_url.clone();
         url.push_str(add);
         url
-    }
-}
-
-impl crate::SendTriggerList for Mattermost {
-    fn send_trigger_list(&self, triggers: Vec<Trigger>, from: &gm::Post) -> Result<()> {
-        let mut l = String::from(format!("Ya {:?} triggers.\n", triggers.len()));
-        let mut count = 0;
-
-        for trigger in triggers {
-            count += 1;
-            if trigger.emoji.is_some() {
-                l.push_str(&format!(
-                    " * `{}`: :{}:\n",
-                    trigger.triggered_by,
-                    trigger.emoji.unwrap()
-                ));
-            } else {
-                l.push_str(&format!(
-                    " * `{}`: {}\n",
-                    trigger.triggered_by,
-                    trigger.text_.unwrap()
-                ));
-            }
-
-            if count == 20 {
-                self.message(from, &l)?;
-                count = 0;
-                l = String::new();
-            }
-        }
-
-        if count > 0 {
-            self.message(from, &l)?;
-        }
-
-        Ok(())
     }
 }
 
@@ -202,7 +165,7 @@ impl Notifier for Mattermost {
         let post = gm::Post::with_message(&format!(
             "# Startup {:?} (local time)\n## Build Hash\n * `{}`\n{}",
             datetime,
-            crate::BUILD_GIT_HASH,
+            flobot_lib::BUILD_GIT_HASH,
             message
         ))
         .nchannel(&self.cfg.debug_channel);

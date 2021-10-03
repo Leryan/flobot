@@ -9,8 +9,6 @@ use regex::Regex;
 use std::sync::Arc;
 use std::time::Duration;
 
-// fn send_trigger_list(&self, triggers: Vec<Trigger>, from: &Post) -> Result<()>; // FIXME: generic pagination instead
-
 pub fn compile_trigger(trigger: &str) -> std::result::Result<Regex, regex::Error> {
     let re = format!("(?ms)^.*({}).*$", escape_re(trigger));
     Regex::new(&re)
@@ -49,7 +47,7 @@ pub struct Trigger<C, E> {
     delay_repeat: Duration,
 }
 
-impl<C, E> Trigger<C, E> {
+impl<C: client::Sender, E> Trigger<C, E> {
     pub fn new(db: Arc<E>, client: C, tempo: Tempo, delay_repeat: Duration) -> Self {
         Self {
             db,
@@ -70,11 +68,45 @@ impl<C, E> Trigger<C, E> {
     pub fn match_trigger(&self, message: &str, trigger: &String) -> bool {
         return valid_match(trigger, message);
     }
+
+    pub fn send_trigger_list(&self, triggers: Vec<MTrigger>, from: &Post) -> Result {
+        let mut l = String::from(format!("Ya {:?} triggers.\n", triggers.len()));
+        let mut count = 0;
+
+        for trigger in triggers {
+            count += 1;
+            if trigger.emoji.is_some() {
+                l.push_str(&format!(
+                    " * `{}`: :{}:\n",
+                    trigger.triggered_by,
+                    trigger.emoji.unwrap()
+                ));
+            } else {
+                l.push_str(&format!(
+                    " * `{}`: {}\n",
+                    trigger.triggered_by,
+                    trigger.text_.unwrap()
+                ));
+            }
+
+            if count == 20 {
+                self.client.message(from, &l)?;
+                count = 0;
+                l = String::new();
+            }
+        }
+
+        if count > 0 {
+            self.client.message(from, &l)?;
+        }
+
+        Ok(())
+    }
 }
 
 impl<C, E> Handler for Trigger<C, E>
 where
-    C: client::Sender + crate::SendTriggerList,
+    C: client::Sender,
     E: db::Trigger,
 {
     type Data = Post;
@@ -147,7 +179,7 @@ A per [channel, trigger] antispam is effective and currently configured at {} se
 
         if self.match_list.is_match(message) {
             let res = self.db.list(&post.team_id)?;
-            return Ok(self.client.send_trigger_list(res, post)?);
+            return Ok(self.send_trigger_list(res, post)?);
         }
 
         match self.match_text.captures(message) {
