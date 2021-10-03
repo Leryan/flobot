@@ -1,7 +1,7 @@
-use crate::client;
 use crate::db;
-use crate::handlers::{Handler, Result};
-use crate::models::Post;
+use flobot_lib::client;
+use flobot_lib::handler::{Handler, Result};
+use flobot_lib::models::Post;
 use std::sync::Arc;
 
 use regex::Regex;

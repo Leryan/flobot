@@ -1,7 +1,7 @@
-use crate::client::Notifier;
 use crate::joke::{Error, Random, Result};
-use crate::task::{ExecIn, Task};
 use chrono::{DateTime, Duration, Local};
+use flobot_lib::client::Notifier;
+use flobot_lib::task::{self, ExecIn, Task};
 use reqwest::blocking::Client;
 use serde::Deserialize;
 use std::result::Result as StdResult;
@@ -124,7 +124,7 @@ pub struct Pinterest<N> {
     notifier: N,
 }
 
-impl<N: crate::client::Notifier> Pinterest<N> {
+impl<N: Notifier> Pinterest<N> {
     pub fn new(
         client_id: &str,
         client_secret: &str,
@@ -280,11 +280,11 @@ impl<N: Notifier> Task for Pinterest<N> {
         "pinterest.token".to_string()
     }
 
-    fn init_exec(&self, _now: crate::task::Now) -> ExecIn {
+    fn init_exec(&self, _now: task::Now) -> ExecIn {
         std::time::Duration::from_secs(0)
     }
 
-    fn exec(&self, now: crate::task::Now) -> StdResult<ExecIn, crate::task::Error> {
+    fn exec(&self, now: task::Now) -> StdResult<ExecIn, task::Error> {
         let mut do_refresh = false;
 
         if (*self.token.read().unwrap()).is_none() {

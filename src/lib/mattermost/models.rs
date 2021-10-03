@@ -1,4 +1,4 @@
-use crate::models as gm;
+use flobot_lib::models as gm;
 use serde::{Deserialize, Serialize};
 use std::convert::Into;
 

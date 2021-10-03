@@ -1,8 +1,5 @@
-use crate::db::tempo::Tempo;
-use crate::models::Post;
-use chrono::{self, DateTime, Duration as CDuration, Local, Timelike};
-use reqwest::blocking::Client;
-use std::convert::From;
+use crate::tempo::Tempo;
+use chrono::{self, DateTime, Duration as CDuration, Local};
 use std::sync::Arc;
 use std::sync::Mutex;
 use std::{thread, time, time::Duration};
@@ -21,13 +18,6 @@ pub enum Error {
     CannotExec((ExecIn, String)),
     /// The task should be rescheduled in time as a function of exponential.
     ExpRetry(String),
-}
-
-/// Provide a basic error management that will reschedule the call.
-impl From<reqwest::Error> for Error {
-    fn from(re: reqwest::Error) -> Self {
-        Error::Reschedule(re.to_string())
-    }
 }
 
 pub type ExecIn = time::Duration;
@@ -130,76 +120,5 @@ impl Task for Tick {
 
     fn init_exec(&self, _now: Now) -> ExecIn {
         Duration::from_secs(0)
-    }
-}
-
-pub struct Meteo<S: crate::client::Sender> {
-    client: S,
-    on_channel_id: String,
-    cities: Vec<String>,
-}
-
-impl<S: crate::client::Sender> Meteo<S> {
-    pub fn new(cities: Vec<String>, client: S, on_channel_id: &str) -> Self {
-        Self {
-            on_channel_id: on_channel_id.to_string(),
-            client: client,
-            cities: cities,
-        }
-    }
-}
-
-impl<S: crate::client::Sender> Task for Meteo<S> {
-    fn name(&self) -> String {
-        "meteo".into()
-    }
-
-    fn init_exec(&self, now: Now) -> ExecIn {
-        let mut sched = now.with_hour(7).unwrap().with_minute(23).unwrap();
-        if sched < now {
-            sched = sched + cduration_from_secs(24 * 3600);
-        }
-        (sched - now).to_std().unwrap()
-    }
-
-    fn exec(&self, now: Now) -> Result<ExecIn, Error> {
-        let mut msg = String::from("Mééééééééééééétéoooooooooooo :\n");
-
-        for city in self.cities.iter() {
-            let url = format!("https://wttr.in/{}", city);
-            let r = Client::new()
-                .get(&url)
-                .query(&[("format", "%l: %c %t")])
-                .send();
-
-            if let Err(e) = r {
-                return Err(Error::CannotExec((
-                    Duration::from_secs(24 * 3600),
-                    e.to_string(),
-                )));
-            }
-
-            let v = r.unwrap();
-            if v.status().is_client_error() {
-                return Err(Error::CannotExec((
-                    Duration::from_secs(24 * 3600),
-                    v.status().to_string(),
-                )));
-            }
-            if v.status().is_server_error() {
-                return Err(Error::ExpRetry(v.status().to_string()));
-            }
-
-            msg.push_str(&format!(" * {}\n", &v.text().unwrap()));
-        }
-
-        let post = Post::with_message(&msg).nchannel(&self.on_channel_id);
-        if self.client.post(&post).is_err() {
-            return Err(Error::ExpRetry("cannot post".into()));
-        }
-
-        let tomorrow = now.with_hour(7).unwrap().with_minute(23).unwrap()
-            + cduration_from_secs(24 * 3600);
-        Ok((tomorrow - now).to_std().unwrap())
     }
 }

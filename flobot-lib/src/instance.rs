@@ -1,9 +1,10 @@
 use crate::client;
-use crate::handlers::Handler;
+use crate::handler::{Handler, Result as HandlerResult};
 use crate::middleware::Continue;
 use crate::middleware::Error as MiddlewareError;
 use crate::middleware::Middleware as MMiddleware;
 use crate::models::{Event, Post, StatusCode, StatusError};
+use regex::Regex;
 use std::convert::From;
 use std::sync::mpsc::{Receiver, RecvTimeoutError};
 
@@ -70,7 +71,7 @@ impl<PH: Handler> Handler for MutexedPostHandler<PH> {
         self.handler.lock().unwrap().help()
     }
 
-    fn handle(&self, data: &PH::Data) -> crate::handlers::Result {
+    fn handle(&self, data: &PH::Data) -> HandlerResult {
         self.handler.lock().unwrap().handle(data)
     }
 }
@@ -134,7 +135,7 @@ impl<C: client::Sender + client::Notifier> Instance<C> {
             return self.client.reply(post, &reply).map_err(client_err);
         }
 
-        match regex::Regex::new("^!help ([a-zA-Z0-9_-]+).*")
+        match Regex::new(r"^!help[\s]+([a-zA-Z0-9_-]+).*")
             .unwrap()
             .captures(&post.message)
         {

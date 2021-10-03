@@ -49,3 +49,51 @@ pub struct NewSMSPrepare<'a> {
     pub name: &'a str,
     pub text: &'a str,
 }
+
+// db
+use diesel::Queryable;
+
+#[derive(Debug, Queryable, Clone)]
+pub struct Edit {
+    pub id: i32,
+    pub edit: String,
+    pub team_id: Option<String>,
+    pub user_id: Option<String>,
+    pub replace_with_text: Option<String>,
+    pub replace_with_file: Option<String>,
+}
+
+#[derive(Debug, Queryable)]
+pub struct Trigger {
+    pub id: i32,
+    pub triggered_by: String,
+    pub emoji: Option<String>,
+    pub text_: Option<String>,
+    pub team_id: String,
+}
+
+#[derive(Debug, Queryable)]
+pub struct Blague {
+    pub id: i32,
+    pub team_id: String,
+    pub text: String,
+}
+
+#[derive(Debug, Queryable)]
+pub struct SMSContact {
+    pub id: i32,
+    pub team_id: String,
+    pub name: String,
+    pub number: String,
+    pub last_sending_unixts: i64,
+}
+
+#[derive(Debug, Queryable)]
+pub struct SMSPrepare {
+    pub id: i32,
+    pub team_id: String,
+    pub contact_id: i32,
+    pub trigname: String,
+    pub name: String,
+    pub text: String,
+}

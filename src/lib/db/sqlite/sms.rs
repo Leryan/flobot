@@ -1,9 +1,8 @@
-use crate::db::models::{NewSMSContact, NewSMSPrepare};
+use crate::db::models::{NewSMSContact, NewSMSPrepare, SMSContact, SMSPrepare};
 use crate::db::schema::sms_contact::dsl as tc;
 use crate::db::schema::sms_prepare::dsl as tp;
 use crate::db::Error;
 use crate::db::Result;
-use crate::models;
 use diesel::prelude::*;
 
 impl crate::db::SMS for super::Sqlite {
@@ -12,12 +11,12 @@ impl crate::db::SMS for super::Sqlite {
         team_id: &str,
         name: &str,
         number: &str,
-    ) -> Result<models::SMSContact> {
+    ) -> Result<SMSContact> {
         let db = &*self.db.lock().unwrap();
         db.transaction::<(), Error, _>(|| {
             let res = tc::sms_contact
                 .filter(tc::team_id.eq(team_id).and(tc::name.eq(name)))
-                .first::<models::SMSContact>(db);
+                .first::<SMSContact>(db);
 
             match res {
                 Ok(contact) => {
@@ -54,7 +53,7 @@ impl crate::db::SMS for super::Sqlite {
             .first(db)?)
     }
 
-    fn list_contacts(&self, team_id: &str) -> Result<Vec<models::SMSContact>> {
+    fn list_contacts(&self, team_id: &str) -> Result<Vec<SMSContact>> {
         Ok(tc::sms_contact
             .filter(tc::team_id.eq(team_id))
             .order_by(tc::name)
@@ -68,7 +67,7 @@ impl crate::db::SMS for super::Sqlite {
         trigname: &str,
         name: &str,
         text: &str,
-    ) -> Result<models::SMSPrepare> {
+    ) -> Result<SMSPrepare> {
         let db = &*self.db.lock().unwrap();
         db.transaction::<_, Error, _>(|| {
             let res = tp::sms_prepare
@@ -78,7 +77,7 @@ impl crate::db::SMS for super::Sqlite {
                         .and(tp::sms_contact_id.eq(contact_id))
                         .and(tp::trigname.eq(trigname)),
                 )
-                .first::<models::SMSPrepare>(db);
+                .first::<SMSPrepare>(db);
 
             match res {
                 Ok(prepare) => {
@@ -116,10 +115,7 @@ impl crate::db::SMS for super::Sqlite {
             .first(db)?)
     }
 
-    fn list_prepare(
-        &self,
-        team_id: &str,
-    ) -> Result<Vec<(models::SMSPrepare, models::SMSContact)>> {
+    fn list_prepare(&self, team_id: &str) -> Result<Vec<(SMSPrepare, SMSContact)>> {
         let res = tp::sms_prepare
             .filter(tp::team_id.eq(team_id))
             .order_by(tp::trigname)
@@ -133,7 +129,7 @@ impl crate::db::SMS for super::Sqlite {
         team_id: &str,
         name: Option<&str>,
         id: Option<&i32>,
-    ) -> Result<Option<models::SMSContact>> {
+    ) -> Result<Option<SMSContact>> {
         let mut query = tc::sms_contact.into_boxed();
         query = query.filter(tc::team_id.eq(team_id));
         if let Some(name) = name {
@@ -149,11 +145,7 @@ impl crate::db::SMS for super::Sqlite {
         }
     }
 
-    fn get_prepare(
-        &self,
-        team_id: &str,
-        trigname: &str,
-    ) -> Result<Option<models::SMSPrepare>> {
+    fn get_prepare(&self, team_id: &str, trigname: &str) -> Result<Option<SMSPrepare>> {
         match tp::sms_prepare
             .filter(tp::team_id.eq(team_id).and(tp::trigname.eq(trigname)))
             .first(&*self.db.lock().unwrap())

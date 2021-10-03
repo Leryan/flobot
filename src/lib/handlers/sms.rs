@@ -1,7 +1,7 @@
-use crate::client;
 use crate::db;
-use crate::handlers::{Error, Handler, Result};
-use crate::models::Post;
+use flobot_lib::client;
+use flobot_lib::handler::{Error, Handler, Result};
+use flobot_lib::models::Post;
 use regex::Regex;
 use reqwest;
 use serde_json::json;

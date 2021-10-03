@@ -1,7 +1,7 @@
-use crate::client;
 use crate::db::Joke as DB;
-use crate::handlers::Handler as BotHandler;
-use crate::models::Post;
+use flobot_lib::client;
+use flobot_lib::handler::Handler as BotHandler;
+use flobot_lib::models::Post;
 use rand::Rng;
 use regex::Regex;
 use reqwest::blocking::Client as RClient;
@@ -24,11 +24,7 @@ pub type Result = std::result::Result<String, Error>;
 
 impl From<reqwest::Error> for Error {
     fn from(e: reqwest::Error) -> Self {
-        if e.is_builder() || e.is_status() || e.is_timeout() {
-            return Self::Client(e.to_string());
-        }
-
-        Self::Other(e.to_string())
+        Self::Client(e.to_string())
     }
 }
 
@@ -223,13 +219,13 @@ impl Random for ProviderFile {
     }
 }
 
-impl From<Error> for crate::handlers::Error {
+impl From<Error> for flobot_lib::handler::Error {
     fn from(e: Error) -> Self {
         match e {
-            Error::Client(s) => crate::handlers::Error::Timeout(s),
-            Error::NoData(s) => crate::handlers::Error::Database(s),
-            Error::Other(s) => crate::handlers::Error::Other(s),
-            Error::Database(s) => crate::handlers::Error::Database(s),
+            Error::Client(s) => flobot_lib::handler::Error::Timeout(s),
+            Error::NoData(s) => flobot_lib::handler::Error::Database(s),
+            Error::Other(s) => flobot_lib::handler::Error::Other(s),
+            Error::Database(s) => flobot_lib::handler::Error::Database(s),
         }
     }
 }
@@ -276,7 +272,7 @@ where
         )
     }
 
-    fn handle(&self, post: &Post) -> crate::handlers::Result {
+    fn handle(&self, post: &Post) -> flobot_lib::handler::Result {
         let msg = &post.message;
 
         if msg == "!blague" {

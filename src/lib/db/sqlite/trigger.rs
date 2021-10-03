@@ -1,22 +1,21 @@
-use crate::db::models::NewTrigger;
+use crate::db::models::{NewTrigger, Trigger};
 use crate::db::schema::trigger::dsl as table;
 use crate::db::Result;
-use crate::models;
 use diesel::prelude::*;
 
 impl crate::db::Trigger for super::Sqlite {
-    fn list(&self, team_id: &str) -> Result<Vec<models::Trigger>> {
+    fn list(&self, team_id: &str) -> Result<Vec<Trigger>> {
         return Ok(table::trigger
             .filter(table::team_id.eq(team_id))
             .order(table::triggered_by.asc())
-            .load::<models::Trigger>(&*self.db.lock().unwrap())?);
+            .load::<Trigger>(&*self.db.lock().unwrap())?);
     }
 
-    fn search(&self, team_id: &str) -> Result<Vec<models::Trigger>> {
+    fn search(&self, team_id: &str) -> Result<Vec<Trigger>> {
         Ok(table::trigger
             .filter(table::team_id.eq(team_id))
             .order_by(table::text_) // emojis first -> all emoji triggers processed first, then text
-            .load::<models::Trigger>(&*self.db.lock().unwrap())?)
+            .load::<Trigger>(&*self.db.lock().unwrap())?)
     }
 
     fn add_text(&self, team_id: &str, trigger_: &str, text_: &str) -> Result<()> {

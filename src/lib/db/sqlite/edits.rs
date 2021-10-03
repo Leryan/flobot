@@ -1,16 +1,15 @@
-use crate::db::models::NewEdit;
+use crate::db::models::{Edit, NewEdit};
 use crate::db::schema::edits::dsl as table;
 use crate::db::Result;
-use crate::models;
 use diesel::prelude::*;
 
 impl crate::db::Edits for super::Sqlite {
-    fn list(&self, team_id: &str) -> Result<Vec<models::Edit>> {
+    fn list(&self, team_id: &str) -> Result<Vec<Edit>> {
         return Ok(table::edits
             .filter(table::team_id.eq(team_id))
             .order_by(table::user_id) // user edits first, then team
             .order_by(table::edit)
-            .load::<models::Edit>(&*self.db.lock().unwrap())?);
+            .load::<Edit>(&*self.db.lock().unwrap())?);
     }
 
     /// Find the first Edit available, sorted by user_id, then team_id, and matching edit parameter.
@@ -36,12 +35,7 @@ impl crate::db::Edits for super::Sqlite {
     /// assert_eq!(None, e.replace_with_file);
     /// # }
     /// ```
-    fn find(
-        &self,
-        user_id: &str,
-        team_id: &str,
-        edit: &str,
-    ) -> Result<Option<models::Edit>> {
+    fn find(&self, user_id: &str, team_id: &str, edit: &str) -> Result<Option<Edit>> {
         let res = table::edits
             .filter(
                 table::team_id
@@ -50,7 +44,7 @@ impl crate::db::Edits for super::Sqlite {
                     .and(table::edit.eq(edit.trim())),
             )
             .order_by(table::user_id) // user edits first, then team
-            .first::<models::Edit>(&*self.db.lock().unwrap());
+            .first::<Edit>(&*self.db.lock().unwrap());
 
         match res {
             Ok(edit) => Ok(Some(edit)),

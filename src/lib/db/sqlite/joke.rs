@@ -1,7 +1,6 @@
-use crate::db::models::NewBlague;
+use crate::db::models::{Blague, NewBlague};
 use crate::db::schema::blague::dsl as table;
 use crate::db::Result;
-use crate::models::Blague;
 use diesel::prelude::*;
 
 impl crate::db::Joke for super::Sqlite {

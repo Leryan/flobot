@@ -2,9 +2,7 @@ pub mod models;
 use diesel::Connection;
 use std::convert::From;
 
-use crate::models as business_models;
-
-pub mod tempo;
+use crate::db::models as business_models;
 
 #[cfg(feature = "sqlite")]
 pub type DatabaseConnection = diesel::SqliteConnection;

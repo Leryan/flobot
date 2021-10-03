@@ -1,13 +1,15 @@
-use crate::client;
 use crate::db;
-use crate::db::tempo::Tempo;
-use crate::handlers::{Handler, Result};
-use crate::models::Post;
-use crate::models::Trigger as MTrigger;
+use crate::db::models::Trigger as MTrigger;
+use flobot_lib::client;
+use flobot_lib::handler::{Handler, Result};
+use flobot_lib::models::Post;
+use flobot_lib::tempo::Tempo;
 use regex::escape as escape_re;
 use regex::Regex;
 use std::sync::Arc;
 use std::time::Duration;
+
+// fn send_trigger_list(&self, triggers: Vec<Trigger>, from: &Post) -> Result<()>; // FIXME: generic pagination instead
 
 pub fn compile_trigger(trigger: &str) -> std::result::Result<Regex, regex::Error> {
     let re = format!("(?ms)^.*({}).*$", escape_re(trigger));
@@ -72,7 +74,7 @@ impl<C, E> Trigger<C, E> {
 
 impl<C, E> Handler for Trigger<C, E>
 where
-    C: client::Sender,
+    C: client::Sender + crate::SendTriggerList,
     E: db::Trigger,
 {
     type Data = Post;

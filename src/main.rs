@@ -1,19 +1,21 @@
 #[macro_use]
 extern crate diesel_migrations;
 use dotenv;
-use flobot::client::*;
 use flobot::conf::Conf;
 use flobot::db;
-use flobot::db::tempo::Tempo;
 use flobot::handlers::{
     edits::Edit as HandlerEdit, sms, trigger::Trigger as HandlerTrigger,
     ww::Handler as HandlerWW,
 };
-use flobot::instance::{Instance, MutexedPostHandler};
 use flobot::joke;
 use flobot::mattermost::client::Mattermost;
-use flobot::middleware;
-use flobot::task::*;
+use flobot::weather::Meteo;
+use flobot_lib::client::Getter;
+use flobot_lib::instance::{Instance, MutexedPostHandler};
+use flobot_lib::middleware;
+use flobot_lib::models::Event;
+use flobot_lib::task::*;
+use flobot_lib::tempo::Tempo;
 use signal_libc::signal::{self, Signal};
 use std::env;
 use std::fs;
@@ -192,7 +194,7 @@ fn bot() -> std::result::Result<(), Box<dyn std::error::Error>> {
                 }
             }
 
-            while sender.send(flobot::models::Event::Shutdown).is_err() {}
+            while sender.send(Event::Shutdown).is_err() {}
             println!("graceful stop asked");
         })
     };

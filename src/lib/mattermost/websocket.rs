@@ -1,6 +1,5 @@
 use super::models::MetaEvent;
-use crate::client::EventClient;
-use crate::models::*;
+use flobot_lib::models::Event;
 use serde_json::json;
 use std::sync::mpsc::Sender as ChannelSender;
 use ws::Result as WSResult;
@@ -45,8 +44,8 @@ impl Handler for MattermostWS {
     }
 }
 
-impl EventClient for super::client::Mattermost {
-    fn listen(&self, sender: ChannelSender<Event>) {
+impl super::client::Mattermost {
+    pub fn listen(&self, sender: ChannelSender<Event>) {
         let mut url = self.cfg.ws_url.clone();
         url.push_str("/api/v4/websocket");
 

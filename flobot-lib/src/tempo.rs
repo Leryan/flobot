@@ -1,6 +1,4 @@
 use chrono::{DateTime, Utc};
-use serde::{de::Visitor, Deserialize, Serialize};
-use serde_json::json;
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
@@ -15,6 +13,9 @@ type Store = HashMap<String, Dt>;
 pub struct Tempo {
     store: Arc<Mutex<Store>>,
 }
+
+use serde::{de::Visitor, Deserialize, Serialize};
+use serde_json::json;
 
 impl Serialize for Dt {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
@@ -68,7 +69,7 @@ impl<'de> Deserialize<'de> for Dt {
 ///
 /// ```rust
 /// # fn main() {
-/// # use flobot::db::tempo::Tempo;
+/// # use flobot_lib::tempo::Tempo;
 /// # use std::thread::sleep;
 /// use std::time::Duration;
 /// let mut tempo = Tempo::new();
@@ -93,7 +94,10 @@ impl<'de> Deserialize<'de> for Dt {
 /// ```
 impl Tempo {
     pub fn new() -> Self {
-        Self::load("{}").unwrap()
+        //Self::load("{}").unwrap()
+        Self {
+            store: Arc::default(),
+        }
     }
 
     pub fn set(&self, key: String, ttl: Duration) {

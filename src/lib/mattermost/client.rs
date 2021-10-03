@@ -1,26 +1,9 @@
 use super::models::*;
-use crate::client::{Channel, Error, Getter, Notifier, Result, Sender};
 use crate::conf::Conf;
-use crate::models as gm;
+use crate::db::models::Trigger;
+use flobot_lib::client::{Channel, Getter, Notifier, Result, Sender};
+use flobot_lib::models as gm;
 use uuid::Uuid;
-
-impl From<reqwest::Error> for Error {
-    fn from(e: reqwest::Error) -> Self {
-        if e.is_timeout() {
-            return Error::Timeout(e.to_string());
-        }
-
-        if e.is_status() {
-            return Error::Status(e.to_string());
-        }
-
-        if e.is_builder() {
-            return Error::Body(e.to_string());
-        }
-
-        Error::Other(e.to_string())
-    }
-}
 
 #[derive(Clone)]
 pub struct Mattermost {
@@ -49,6 +32,42 @@ impl Mattermost {
         let mut url = self.cfg.api_url.clone();
         url.push_str(add);
         url
+    }
+}
+
+impl crate::SendTriggerList for Mattermost {
+    fn send_trigger_list(&self, triggers: Vec<Trigger>, from: &gm::Post) -> Result<()> {
+        let mut l = String::from(format!("Ya {:?} triggers.\n", triggers.len()));
+        let mut count = 0;
+
+        for trigger in triggers {
+            count += 1;
+            if trigger.emoji.is_some() {
+                l.push_str(&format!(
+                    " * `{}`: :{}:\n",
+                    trigger.triggered_by,
+                    trigger.emoji.unwrap()
+                ));
+            } else {
+                l.push_str(&format!(
+                    " * `{}`: {}\n",
+                    trigger.triggered_by,
+                    trigger.text_.unwrap()
+                ));
+            }
+
+            if count == 20 {
+                self.message(from, &l)?;
+                count = 0;
+                l = String::new();
+            }
+        }
+
+        if count > 0 {
+            self.message(from, &l)?;
+        }
+
+        Ok(())
     }
 }
 
@@ -173,44 +192,6 @@ impl Sender for Mattermost {
             .bearer_auth(&self.cfg.token)
             .json(&edit)
             .send()?;
-        Ok(())
-    }
-
-    fn send_trigger_list(
-        &self,
-        triggers: Vec<gm::Trigger>,
-        from: &gm::Post,
-    ) -> Result<()> {
-        let mut l = String::from(format!("Ya {:?} triggers.\n", triggers.len()));
-        let mut count = 0;
-
-        for trigger in triggers {
-            count += 1;
-            if trigger.emoji.is_some() {
-                l.push_str(&format!(
-                    " * `{}`: :{}:\n",
-                    trigger.triggered_by,
-                    trigger.emoji.unwrap()
-                ));
-            } else {
-                l.push_str(&format!(
-                    " * `{}`: {}\n",
-                    trigger.triggered_by,
-                    trigger.text_.unwrap()
-                ));
-            }
-
-            if count == 20 {
-                self.message(from, &l)?;
-                count = 0;
-                l = String::new();
-            }
-        }
-
-        if count > 0 {
-            self.message(from, &l)?;
-        }
-
         Ok(())
     }
 }

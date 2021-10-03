@@ -13,15 +13,14 @@ path = "src/lib/lib.rs"
 [features]
 default = ["sqlite"]
 sqlite = []
-postgres = []
 
 [dependencies]
 signal-libc = { path = "./signal-libc" }
+flobot-lib = { path = "./flobot-lib"}
 base64 = "0.13"
 chrono = "0.4"
 diesel = { version = "1.4", features = ["sqlite"] }
 diesel_migrations = { version="1.4", features= ["sqlite"]}
-libc = "0.2"
 ws = {version = "0.9", features = ["nativetls"]}
 dotenv = "0.15"
 serde = {version = "1.0", features = ["derive"]}

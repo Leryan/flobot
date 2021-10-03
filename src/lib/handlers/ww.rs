@@ -1,8 +1,7 @@
-use crate::client;
-use crate::handlers;
-use crate::handlers::{Handler as BotHandler, Result};
-use crate::models::Post;
 use crate::werewolf;
+use flobot_lib::client;
+use flobot_lib::handler::{Handler as BotHandler, Result};
+use flobot_lib::models::Post;
 use regex::Regex;
 use std::cell::RefCell;
 use std::convert::From;
@@ -51,13 +50,13 @@ impl<C> Handler<C>
 where
     C: client::Sender + client::Channel + client::Getter,
 {
-    fn post_all(&self, post: &Post) -> handlers::Result {
+    fn post_all(&self, post: &Post) -> Result {
         let post = post.nchannel(&self.room_all.borrow());
         self.client.post(&post)?;
         Ok(())
     }
 
-    fn post_ww(&self, post: &Post) -> handlers::Result {
+    fn post_ww(&self, post: &Post) -> Result {
         let post = post.nchannel(&self.room_ww.borrow());
         self.client.post(&post)?;
         Ok(())
@@ -72,11 +71,7 @@ where
         *self.game.borrow_mut() = werewolf::Game::new();
     }
 
-    fn handle_starting_commands(
-        &self,
-        post: &Post,
-        cur: &werewolf::Step,
-    ) -> handlers::Result {
+    fn handle_starting_commands(&self, post: &Post, cur: &werewolf::Step) -> Result {
         // answer to start, join and list commands
         if self.re_match(r"!ww[\s]+start.*", &post.message) {
             match cur {
@@ -181,7 +176,7 @@ where
         Ok(())
     }
 
-    fn handle_game(&self, post: &Post) -> handlers::Result {
+    fn handle_game(&self, post: &Post) -> Result {
         let cur = self.game.borrow().current_step();
         self.handle_starting_commands(post, &cur)?;
 

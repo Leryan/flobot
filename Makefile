@@ -1,24 +1,21 @@
 .PHONY: build
 build:
 	cargo build --release
+	strip target/release/flobot
 
 .PHONY: vet
 vet:
 	cargo check
-	cargo fmt
 
 .PHONY: test
-test:
+test: vet
 	cargo test
-	cargo fmt
 
 .PHONY: run
 run:
 	RUST_BACKTRACE=1 cargo run
 
 .PHONY: deploy
-deploy:
-	systemctl stop bot
-	cp target/release/flobot /home/bot/
-	rsync -avKSHc --delete ./migrations/ /home/bot/migrations/
-	systemctl start bot
+deploy: test build
+	scp target/release/flobot srv.leila:/home/bot/flobot.upgrade
+	ssh srv.leila systemctl restart bot
