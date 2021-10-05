@@ -5,8 +5,8 @@ use flobot::db;
 use flobot::joke;
 use flobot::weather::Meteo;
 use flobot::{
-    edits::Edit as HandlerEdit, sms, trigger::Trigger as HandlerTrigger,
-    werewolf::Handler as HandlerWW,
+    edits::Edit as HandlerEdit, pinterest::Pinterest, sms,
+    trigger::Trigger as HandlerTrigger, werewolf::Handler as HandlerWW,
 };
 use flobot_lib::client::Getter;
 use flobot_lib::conf::Conf;
@@ -18,6 +18,7 @@ use flobot_lib::task::*;
 use flobot_lib::tempo::Tempo;
 use flobot_mattermost::client::Mattermost;
 use signal_libc::signal::{self, Signal};
+use simple_server as ss;
 use std::env;
 use std::fs;
 use std::sync::mpsc::channel;
@@ -29,11 +30,11 @@ embed_migrations!();
 
 fn make_jokes_provider(botdb: Arc<db::sqlite::Sqlite>) -> joke::SelectProvider {
     let mut joke_remotes = joke::SelectProvider::new(vec![]);
-    joke_remotes.push(Box::new(joke::ProviderBadJokes::new()));
-    joke_remotes.push(Box::new(joke::ProviderSQLite::new(botdb)));
+    joke_remotes.push(Arc::new(joke::ProviderBadJokes::new()));
+    joke_remotes.push(Arc::new(joke::ProviderSQLite::new(botdb)));
     if let Ok(token) = env::var("BOT_BLAGUESAPI_TOKEN") {
         let blaguesapi = joke::ProviderBlaguesAPI::new(&token);
-        joke_remotes.push(Box::new(blaguesapi));
+        joke_remotes.push(Arc::new(blaguesapi));
     }
 
     if let Ok(filepath) = env::var("BOT_BLAGUES_URLS") {
@@ -43,7 +44,7 @@ fn make_jokes_provider(botdb: Arc<db::sqlite::Sqlite>) -> joke::SelectProvider {
                 urls.push(line.to_string());
             }
 
-            joke_remotes.push(Box::new(joke::ProviderFile { urls }));
+            joke_remotes.push(Arc::new(joke::ProviderFile { urls }));
         } else {
             println!("cannot read jokes from {}", filepath);
         }
@@ -116,11 +117,66 @@ fn bot() -> std::result::Result<(), Box<dyn std::error::Error>> {
     instance.add_post_handler(Box::new(edits));
 
     // JOKES
-    let handler_joke = joke::Handler::new(
-        botdb.clone(),
-        make_jokes_provider(botdb.clone()),
-        mm_client.clone(),
-    );
+    let mut jokeprovider = make_jokes_provider(botdb.clone());
+
+    // PINTEREST
+    let mut handler: Option<_> = None;
+    if let (Ok(client_id), Ok(client_secret), Ok(board_id), Ok(redirect)) = (
+        env::var("PINTEREST_CLIENT_ID"),
+        env::var("PINTEREST_CLIENT_SECRET"),
+        env::var("PINTEREST_BOARD_ID"),
+        env::var("PINTEREST_REDIRECT"),
+    ) {
+        println!("loading pinterest");
+        let pinterest = Arc::new(Pinterest::new(
+            &client_id,
+            &client_secret,
+            &redirect,
+            &board_id,
+            mm_client.clone(),
+        ));
+
+        jokeprovider.push(pinterest.clone());
+        taskrunner.add(pinterest.clone());
+
+        handler = Some(
+            move |request: ss::Request<Vec<u8>>,
+                  mut response: ss::ResponseBuilder|
+                  -> ss::ResponseResult {
+                let furl = format!("http://localhost{}", request.uri());
+
+                let mut code = "".to_string();
+                let mut state = "".to_string();
+
+                if let Ok(url) = url::Url::parse(&furl) {
+                    for qp in url.query_pairs() {
+                        if qp.0 == "code" {
+                            code = qp.1.to_string();
+                        } else if qp.0 == "state" {
+                            state = qp.1.to_string();
+                        }
+                    }
+                }
+
+                println!("pinterest: got code {}", code);
+                if pinterest.authenticate(&code, &state) {
+                    println!("authenticated!");
+                    return Ok(response
+                        .status(200)
+                        .body("Authenticated!".as_bytes().to_vec())?);
+                }
+
+                println!("pinterest: failed to authenticate");
+
+                Ok(response
+                    .status(500)
+                    .body("NOT AUTHENTICATED".as_bytes().to_vec())?)
+            },
+        );
+    }
+
+    let handler_joke =
+        joke::Handler::new(botdb.clone(), jokeprovider, mm_client.clone());
     instance.add_post_handler(Box::new(MutexedHandler::from(handler_joke)));
 
     // WEREWOLF GAME
@@ -179,6 +235,22 @@ fn bot() -> std::result::Result<(), Box<dyn std::error::Error>> {
             println!("instance return without error");
         })
     };
+
+    if let Some(handler) = handler {
+        println!("starting webserver with declared handler");
+        let _www_t = thread::spawn(move || loop {
+            // survive crashes from webserver
+            let hh = handler.clone();
+            let r = thread::spawn(move || {
+                let mut server = ss::Server::new(hh);
+                server.dont_serve_static_files();
+                println!("launch webserver on localhost:6799");
+                server.listen("localhost", "6799");
+            })
+            .join();
+            println!("webserver thread loop returned: {:?}", r);
+        });
+    }
 
     println!("wire signals");
     signal::register(Signal::SIGINT);

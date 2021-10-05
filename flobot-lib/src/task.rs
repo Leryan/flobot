@@ -32,11 +32,28 @@ pub trait Task {
     fn exec(&self, now: Now) -> Result<ExecIn, Error>;
 }
 
+pub trait TaskRunner {
+    fn add(&mut self, task: RunnableTask) -> Duration;
+    fn run_forever(&self);
+    fn stop(&self);
+}
+
 pub struct SequentialTaskRunner {
     tasks: Vec<RunnableTask>,
     tempo: Tempo, // contain task names
     cont: Mutex<bool>,
 }
+
+impl SequentialTaskRunner {
+    pub fn new() -> Self {
+        Self {
+            tasks: vec![],
+            tempo: Tempo::new(),
+            cont: Mutex::new(true), // TODO: use Arc<Mutex<bool>>?
+        }
+    }
+}
+
 /// TaskRunner will optimistically run tasks, sequentially. No threading used.
 /// Pauses for 10 seconds between each run loop.
 ///
@@ -46,23 +63,15 @@ pub struct SequentialTaskRunner {
 /// Stacking time consuming tasks will simply delay all tasks.
 ///
 /// The minimum ExecAgainIn time for a task will always be 60 seconds.
-impl SequentialTaskRunner {
-    pub fn new() -> Self {
-        Self {
-            tasks: vec![],
-            tempo: Tempo::new(),
-            cont: Mutex::new(true), // TODO: use Arc<Mutex<bool>>?
-        }
-    }
-
-    pub fn add(&mut self, task: RunnableTask) -> Duration {
+impl TaskRunner for SequentialTaskRunner {
+    fn add(&mut self, task: RunnableTask) -> Duration {
         let exec_in = task.init_exec(Local::now()).max(Duration::from_secs(3));
         self.tempo.set(task.name(), exec_in);
         self.tasks.push(task);
         exec_in
     }
 
-    pub fn run_forever(&self) {
+    fn run_forever(&self) {
         while *self.cont.lock().unwrap() {
             for task in self.tasks.iter() {
                 let key = task.name();
@@ -101,7 +110,7 @@ impl SequentialTaskRunner {
         }
     }
 
-    pub fn stop(&self) {
+    fn stop(&self) {
         *self.cont.lock().unwrap() = false
     }
 }

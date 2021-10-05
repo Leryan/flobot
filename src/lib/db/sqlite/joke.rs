@@ -1,10 +1,10 @@
-use crate::db::models::{Blague, NewBlague};
+use crate::db::models::{Joke, NewJoke};
 use crate::db::schema::blague::dsl as table;
 use crate::db::Result;
 use diesel::prelude::*;
 
 impl crate::db::Joke for super::Sqlite {
-    fn pick(&self, team_id: &str, relnum: u64) -> Result<Option<Blague>> {
+    fn pick(&self, team_id: &str, relnum: u64) -> Result<Option<Joke>> {
         let filter = table::blague
             .filter(table::team_id.eq(team_id))
             .offset(relnum as i64);
@@ -25,11 +25,11 @@ impl crate::db::Joke for super::Sqlite {
         Ok(res as u64)
     }
 
-    fn list(&self, team_id: &str) -> Result<Vec<Blague>> {
+    fn list(&self, team_id: &str) -> Result<Vec<Joke>> {
         return Ok(table::blague
             .filter(table::team_id.eq(team_id))
             .order_by(table::id.asc())
-            .load::<Blague>(&*self.db.lock().unwrap())?);
+            .load::<Joke>(&*self.db.lock().unwrap())?);
     }
 
     fn del(&self, team_id: &str, id: i32) -> Result<()> {
@@ -40,7 +40,7 @@ impl crate::db::Joke for super::Sqlite {
     }
 
     fn add(&self, team_id: &str, text: &str) -> Result<()> {
-        let new_blague = NewBlague {
+        let new_blague = NewJoke {
             team_id: team_id,
             text: text,
         };

@@ -41,7 +41,7 @@ impl From<crate::db::Error> for Error {
     }
 }
 
-pub type Provider = Box<dyn Random + Send + Sync>;
+pub type Provider = Arc<dyn Random + Send + Sync>;
 
 pub struct SelectProvider {
     remotes: Vec<Provider>,
@@ -54,6 +54,10 @@ impl SelectProvider {
 
     pub fn push(&mut self, remote: Provider) {
         self.remotes.push(remote)
+    }
+
+    pub fn clear(&mut self) {
+        self.remotes.clear();
     }
 }
 
@@ -101,8 +105,8 @@ where
         if l < 1 {
             return Err(Error::NoData("no joke in db".to_string()));
         }
-        let blague = self.db.pick(team_id, rand::thread_rng().gen_range(0..l))?;
-        match blague {
+        let joke = self.db.pick(team_id, rand::thread_rng().gen_range(0..l))?;
+        match joke {
             Some(b) => Ok(b.text),
             None => Err(Error::NoData("cannot find that joke".to_string())),
         }
@@ -240,8 +244,8 @@ pub struct Handler<R, S, C> {
 impl<R, S, C> Handler<R, S, C> {
     pub fn new(store: Arc<S>, remotes: R, client: C) -> Self {
         Handler {
-            match_del: Regex::new(r"^!blague del (.*)")
-                .expect("cannot compile blague match del regex"),
+            match_del: Regex::new(r"^!joke del (.*)")
+                .expect("cannot compile joke match del regex"),
             store,
             remotes,
             client,
@@ -258,15 +262,15 @@ where
     type Data = Post;
 
     fn name(&self) -> String {
-        "blague".into()
+        "joke".into()
     }
     fn help(&self) -> Option<String> {
         Some(
             "```
-!blague # raconte une blague
-!blague <une blague> # enregistre une nouvelle blague
-!blague list
-!blague del <num>
+!joke # quick, a joke, now!
+!joke <register a joke>
+!joke list
+!joke del <num>
 ```"
             .to_string(),
         )
@@ -275,15 +279,14 @@ where
     fn handle(&self, post: &Post) -> flobot_lib::handler::Result {
         let msg = &post.message;
 
-        if msg == "!blague" {
-            let blague = self.remotes.random(&post.team_id)?;
-            return Ok(self.client.post(&post.nmessage(&blague))?);
-        } else if msg == "!blague list" {
-            let blagues = self.store.list(&post.team_id)?;
-            let mut rep =
-                String::from("Liste des blagounettes enregistrées à la meuson:\n");
-            for blague in blagues {
-                rep.push_str(&format!(" * {}: {}\n", blague.id, &blague.text));
+        if msg == "!joke" {
+            let joke = self.remotes.random(&post.team_id)?;
+            return Ok(self.client.post(&post.nmessage(&joke))?);
+        } else if msg == "!joke list" {
+            let jokes = self.store.list(&post.team_id)?;
+            let mut rep = String::from("Available jokes:\n");
+            for joke in jokes {
+                rep.push_str(&format!(" * {}: {}\n", joke.id, &joke.text));
             }
 
             return Ok(self.client.post(&post.nmessage(&rep))?);
@@ -306,20 +309,19 @@ where
             None => {}
         };
 
-        if msg.starts_with("!blague ") {
+        if msg.starts_with("!joke ") {
             match msg.splitn(2, " ").collect::<Vec<&str>>().get(1) {
-                Some(blague) => {
-                    if blague.len() > 300 {
-                        return Ok(self.client.reply(
-                            post,
-                            "la blague est trop longue. max 300 caractères",
-                        )?);
+                Some(joke) => {
+                    if joke.len() > 300 {
+                        return Ok(self
+                            .client
+                            .reply(post, "too long: max 300 chars")?);
                     }
-                    self.store.add(&post.team_id, blague)?;
+                    self.store.add(&post.team_id, joke)?;
                     return Ok(self.client.reaction(post, "ok_hand")?);
                 }
                 None => {
-                    return Ok(self.client.reply(post, "t’as des gros doigts papa")?);
+                    return Ok(self.client.reply(post, "nope")?);
                 }
             }
         }

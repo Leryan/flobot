@@ -30,5 +30,7 @@ r2d2_sqlite = "0.18"
 regex = "1.5"
 reqwest = { version = "0.11", features = ["blocking", "json", "gzip"] }
 rand = "0.8"
+simple-server = "0.4"
+http = "0.2"
 url = "2.2"
 uuid = { version = "0.8", features = ["v4"] }

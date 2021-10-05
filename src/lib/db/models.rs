@@ -26,7 +26,7 @@ pub struct NewEdit<'a> {
 
 #[derive(Insertable)]
 #[table_name = "blague"]
-pub struct NewBlague<'a> {
+pub struct NewJoke<'a> {
     pub team_id: &'a str,
     pub text: &'a str,
 }
@@ -73,7 +73,7 @@ pub struct Trigger {
 }
 
 #[derive(Debug, Queryable)]
-pub struct Blague {
+pub struct Joke {
     pub id: i32,
     pub team_id: String,
     pub text: String,

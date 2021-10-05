@@ -64,13 +64,10 @@ pub trait Edits {
 
 pub trait Joke {
     // with 0 <= relnum < count()
-    fn pick(
-        &self,
-        team_id: &str,
-        relnum: u64,
-    ) -> Result<Option<business_models::Blague>>;
+    fn pick(&self, team_id: &str, relnum: u64)
+        -> Result<Option<business_models::Joke>>;
     fn count(&self, team_id: &str) -> Result<u64>;
-    fn list(&self, team_id: &str) -> Result<Vec<business_models::Blague>>;
+    fn list(&self, team_id: &str) -> Result<Vec<business_models::Joke>>;
     fn del(&self, team_id: &str, id: i32) -> Result<()>;
     fn add(&self, team_id: &str, text: &str) -> Result<()>;
 }
