@@ -1,4 +1,4 @@
-use flobot::signal::{self, Signal};
+use signal_libc::signal::{self, Signal};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 use std::thread;
