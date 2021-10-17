@@ -34,7 +34,6 @@ pub struct Post {
     pub user_id: String,
     pub channel_id: String,
     pub root_id: String,
-    pub parent_id: String,
     pub original_id: String,
 }
 
@@ -129,7 +128,7 @@ impl Into<gm::PostEdited> for PostEdited {
             message: post.message.clone(),
             id: post.id.clone(),
             channel_id: post.channel_id.clone(),
-            parent_id: post.parent_id.clone(),
+            parent_id: post.root_id.clone(),
             root_id: post.root_id.clone(),
         }
     }
@@ -152,7 +151,7 @@ impl Into<gm::Post> for Posted {
         gm::Post {
             user_id: post.user_id.clone(),
             root_id: post.root_id.clone(),
-            parent_id: post.parent_id.clone(),
+            parent_id: post.root_id.clone(),
             message: post.message.clone(),
             channel_id: post.channel_id.clone(),
             id: post.id.clone(),
